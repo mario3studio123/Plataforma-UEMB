@@ -1,0 +1,72 @@
+.header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 32px 32px 0 32px;
+  margin-bottom: 20px;
+}
+
+.statsContainer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(22, 20, 23,0.4); /* Vidro escuro */
+  backdrop-filter: blur(24px);        
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 20px;
+  border-radius: 24px;
+
+}
+
+.levelBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #2d2833;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.levelBadge span {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #aaa;
+  font-weight: 700;
+}
+
+.levelBadge strong {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.xpWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 140px;
+}
+
+.xpInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #ccc;
+  font-weight: 600;
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 8px;
+  background-color: #0f0d11;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #915bf5, #c084fc);
+  border-radius: 4px;
+}

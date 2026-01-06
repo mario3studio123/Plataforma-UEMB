@@ -1,0 +1,108 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  animation: fadeIn 0.5s ease;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+}
+
+.backBtn:hover { color: #fff; }
+
+.title { font-size: 2rem; margin-bottom: 8px; }
+.subtitle { color: #888; margin-bottom: 32px; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background-color: #1a1620;
+  padding: 32px;
+  border-radius: 24px;
+  border: 1px solid #2d2833;
+}
+
+.uploadArea {
+  width: 100%;
+}
+
+.uploadLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #444;
+  border-radius: 16px;
+  padding: 40px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #888;
+  background-color: #131116;
+}
+
+.uploadLabel:hover {
+  border-color: var(--primary, #915bf5);
+  color: var(--primary, #915bf5);
+}
+
+.fileName { color: #fff; font-weight: 600; }
+.info { font-size: 0.8rem; margin-top: 8px; opacity: 0.6; }
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputGroup label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.inputGroup input, .inputGroup textarea {
+  background-color: #131116;
+  border: 1px solid #2d2833;
+  padding: 16px;
+  border-radius: 12px;
+  color: #fff;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inputGroup input:focus, .inputGroup textarea:focus {
+  border-color: var(--primary, #915bf5);
+}
+
+.submitBtn {
+  background-color: var(--primary, #915bf5);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.submitBtn:hover {
+  background-color: #7c3aed;
+  transform: scale(1.02);
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

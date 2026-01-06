@@ -1,0 +1,145 @@
+.container {
+  width: 100%;
+}
+
+/* DROP ZONE */
+.dropZone {
+  border: 2px dashed #444;
+  background-color: #131116;
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropZone:hover, .dropZone.active {
+  border-color: #915bf5;
+  background-color: rgba(145, 91, 245, 0.05);
+}
+
+.iconCircle {
+  width: 48px;
+  height: 48px;
+  background-color: #2d2833;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.dropText {
+  color: #ccc;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.dropText span {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+/* UPLOADING */
+.uploadingState {
+  background-color: #1a1620;
+  border: 1px solid #2d2833;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.fileName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 6px;
+  background-color: #0f0d11;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #915bf5, #CA8DFF);
+  transition: width 0.2s linear;
+}
+
+.percentage {
+  font-size: 0.8rem;
+  color: #888;
+  display: block;
+  text-align: right;
+}
+
+/* PREVIEW */
+.previewState {
+  background-color: #1a1620;
+  border: 1px solid #4ade80; /* Borda verde suave indicando sucesso */
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.miniVideo {
+  width: 120px;
+  height: 68px;
+  border-radius: 6px;
+  background-color: #000;
+  object-fit: contain;
+}
+
+.previewInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.successBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4ade80;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.removeBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.removeBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}

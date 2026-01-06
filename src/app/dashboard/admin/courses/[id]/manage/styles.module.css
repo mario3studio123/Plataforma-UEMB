@@ -1,0 +1,146 @@
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 100px 20px;
+    color: #fff;
+}
+
+.loadingScreen {
+    height: 80vh; display: flex; align-items: center; justify-content: center; color: #666;
+}
+
+/* HEADER */
+.header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+}
+
+.backBtn {
+    background: none; border: none; color: #888; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;
+}
+.backBtn:hover { color: #fff; }
+
+.deleteCourseBtn {
+    background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); color: #ff6b6b;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; gap: 8px; align-items: center; font-size: 0.85rem;
+}
+.deleteCourseBtn:hover { background: #ff6b6b; color: #fff; }
+
+/* COURSE CARD */
+.courseCard {
+    background: #1a1620; border: 1px solid #2d2833; border-radius: 20px; padding: 24px;
+    display: flex; gap: 24px; position: relative;
+}
+
+.coverWrapper {
+    width: 200px; height: 120px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: #000;
+}
+.coverWrapper img { width: 100%; height: 100%; object-fit: cover; }
+
+.courseInfo { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.courseInfo h1 { font-size: 1.8rem; line-height: 1.2; }
+.courseInfo p { color: #aaa; font-size: 0.95rem; line-height: 1.5; }
+.tags { display: flex; gap: 12px; margin-top: 8px; }
+.tags span { background: #2d2833; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #ccc; }
+
+.editFloatBtn {
+    position: absolute; top: 20px; right: 20px; background: #2d2833; border: none; color: #fff; 
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.editFloatBtn:hover { background: #915bf5; }
+
+/* FORMULÁRIO DE EDIÇÃO DO CURSO */
+.editCourseForm { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.inputTitle { font-size: 1.5rem; background: #131116; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 8px; width: 100%; }
+.inputDesc { background: #131116; border: 1px solid #444; color: #ccc; padding: 8px; border-radius: 8px; width: 100%; resize: none; }
+.formActions { display: flex; gap: 10px; margin-top: 4px; }
+.saveBtn, .cancelBtn { padding: 6px 14px; border-radius: 6px; cursor: pointer; border: none; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+.saveBtn { background: #915bf5; color: #fff; }
+.cancelBtn { background: #2d2833; color: #ccc; }
+
+.divider { height: 1px; background: #2d2833; margin: 40px 0; }
+
+/* MODULOS */
+.sectionHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.addModuleBtn { background: #2d2833; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.addModuleBtn:hover { background: #915bf5; }
+
+.modulesList { display: flex; flex-direction: column; gap: 20px; }
+
+.moduleItem { background: #1a1620; border: 1px solid #2d2833; border-radius: 12px; overflow: hidden; }
+
+.moduleHeader {
+    background: #221d29; padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2833;
+}
+.moduleTitle { display: flex; align-items: center; gap: 12px; }
+.moduleTitle h3 { font-size: 1rem; color: #fff; }
+.dragIcon { color: #555; cursor: grab; }
+
+.moduleActions { display: flex; gap: 8px; }
+.quizBtn { 
+    background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24;
+    padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; gap: 6px; align-items: center;
+}
+.quizBtn:hover { background: #fbbf24; color: #000; }
+
+.iconBtn { background: #2d2833; border: none; color: #888; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.iconBtn:hover { background: #444; color: #fff; }
+
+/* AULAS */
+.lessonsList { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+
+.lessonItem {
+    display: flex; justify-content: space-between; align-items: center; padding: 10px 12px;
+    background: #131116; border-radius: 8px; transition: background 0.2s;
+}
+.lessonItem:hover { background: #1d1a21; }
+
+.lessonInfo { display: flex; align-items: center; gap: 12px; color: #ccc; font-size: 0.9rem; }
+.lessonIcon { color: #666; }
+.lessonDuration { font-size: 0.75rem; color: #666; background: #222; padding: 2px 6px; border-radius: 4px; }
+
+.lessonActions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s; }
+.lessonItem:hover .lessonActions { opacity: 1; }
+
+.addLessonBtn {
+    width: 100%; padding: 10px; background: transparent; border: 1px dashed #444; color: #666;
+    border-radius: 8px; cursor: pointer; margin-top: 8px; display: flex; justify-content: center; gap: 8px; align-items: center; font-size: 0.85rem; transition: all 0.2s;
+}
+.addLessonBtn:hover { border-color: #915bf5; color: #915bf5; background: rgba(145, 91, 245, 0.05); }
+
+
+/* --- MODAL DE AULA --- */
+.modalOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+    z-index: 100; display: flex; align-items: center; justify-content: center;
+}
+
+.modalContent {
+    width: 500px; background: #1a1620; border: 1px solid #2d2833; border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden;
+}
+
+.modalHeader {
+    padding: 20px; border-bottom: 1px solid #2d2833; display: flex; justify-content: space-between; align-items: center;
+}
+.modalHeader h3 { font-size: 1.2rem; color: #fff; }
+.modalHeader button { background: none; border: none; color: #666; cursor: pointer; }
+.modalHeader button:hover { color: #fff; }
+
+.modalBody { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+.formGroup { display: flex; flex-direction: column; gap: 8px; }
+.formGroup label { color: #aaa; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.formGroup input {
+    background: #131116; border: 1px solid #2d2833; color: #fff; padding: 12px; border-radius: 8px; font-size: 0.95rem; outline: none;
+}
+.formGroup input:focus { border-color: #915bf5; }
+
+.row { display: flex; gap: 16px; }
+.row .formGroup { flex: 1; }
+
+.modalFooter { padding: 20px; border-top: 1px solid #2d2833; background: #131116; }
+
+.saveBtnFull {
+    width: 100%; background: #915bf5; color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: background 0.2s;
+}
+.saveBtnFull:hover { background: #7c3aed; }
