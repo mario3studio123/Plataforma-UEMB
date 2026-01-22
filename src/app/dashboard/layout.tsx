@@ -39,10 +39,6 @@ export default function DashboardLayout({
         <Sidebar />
 
         <div className={styles.mainContent}>
-          <div className={styles.topBarContainer}>
-             <TopBar />
-          </div>
-
           <div className={styles.pageScroll}>
              {children}
           </div>

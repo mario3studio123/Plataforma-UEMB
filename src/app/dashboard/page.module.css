@@ -14,14 +14,6 @@
   overflow: hidden;
 }
 
-/* Container para a TopBar ficar fixa */
-.topBarContainer {
-  flex-shrink: 0; /* Impede que ela encolha */
-  z-index: 10;
-  position: absolute;
-  right: 0;
-  top: 0;
-}
 
 /* Área rolável */
 .pageScroll {

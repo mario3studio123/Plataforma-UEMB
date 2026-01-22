@@ -2,75 +2,60 @@ import { db, storage } from "@/lib/firebase";
 import { doc, deleteDoc, collection, getDocs, writeBatch } from "firebase/firestore";
 import { ref, listAll, deleteObject } from "firebase/storage";
 
-/**
- * Exclui recursivamente todos os arquivos de uma pasta no Storage
- */
+// Helper Recursivo para limpar Storage
 async function deleteFolderContents(path: string) {
   const refFolder = ref(storage, path);
-  
   try {
     const listResult = await listAll(refFolder);
-
-    // 1. Deleta arquivos soltos na pasta
-    const filePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
-    await Promise.all(filePromises);
-
-    // 2. Entra recursivamente nas subpastas (ex: modules/...)
-    const folderPromises = listResult.prefixes.map((folderRef) => 
-      deleteFolderContents(folderRef.fullPath)
-    );
-    await Promise.all(folderPromises);
-    
+    // Deleta arquivos
+    await Promise.all(listResult.items.map((item) => deleteObject(item)));
+    // Entra nas pastas (Recursão)
+    await Promise.all(listResult.prefixes.map((folder) => deleteFolderContents(folder.fullPath)));
   } catch (error) {
-    console.warn(`Erro ao limpar pasta ${path} (pode já estar vazia):`, error);
+    console.warn(`Pasta ${path} vazia ou inexistente.`);
   }
 }
 
 /**
- * Função Principal: Apaga Curso + Módulos + Aulas + Arquivos
+ * EXCLUSÃO COMPLETA E PROFISSIONAL DO CURSO
+ * 1. Apaga arquivos do Storage (Capa, Vídeos dos módulos)
+ * 2. Apaga Coleções Aninhadas (Modules -> Lessons -> Questions)
+ * 3. Apaga Documento Pai
  */
 export async function deleteCourseFull(courseId: string) {
-  try {
-    console.log(`Iniciando exclusão do curso: ${courseId}`);
+  console.log(`🗑️ Iniciando exclusão do curso: ${courseId}`);
 
-    // 1. Limpar Storage (Capa e Vídeos)
-    // Deleta tudo dentro de 'courses/{courseId}'
-    await deleteFolderContents(`courses/${courseId}`);
+  // 1. Limpeza do Storage (Assíncrono, não bloqueante se falhar um arquivo)
+  await deleteFolderContents(`courses/${courseId}`).catch(err => console.error("Erro storage:", err));
 
-    // 2. Limpar Firestore (Cascata manual)
-    // O Firestore não deleta subcoleções automaticamente, precisamos fazer na mão.
-    
-    const modulesRef = collection(db, "courses", courseId, "modules");
-    const modulesSnap = await getDocs(modulesRef);
+  // 2. Limpeza do Firestore (Cascata Manual necessária no NoSQL)
+  const modulesRef = collection(db, "courses", courseId, "modules");
+  const modulesSnap = await getDocs(modulesRef);
 
-    // Usaremos um Batch (Lote) para deletar tudo de uma vez e ser mais rápido/seguro
-    const batch = writeBatch(db);
+  // Firestore Batch (Limite de 500 operações, cuidado em produção massiva)
+  // Se for muito grande, teria que fazer em chunks, mas para cursos normais ok.
+  const batch = writeBatch(db);
 
-    for (const modDoc of modulesSnap.docs) {
-      // Para cada módulo, buscar as aulas
-      const lessonsRef = collection(db, "courses", courseId, "modules", modDoc.id, "lessons");
-      const lessonsSnap = await getDocs(lessonsRef);
+  for (const modDoc of modulesSnap.docs) {
+    // A. Deletar Aulas
+    const lessonsRef = collection(db, "courses", courseId, "modules", modDoc.id, "lessons");
+    const lessonsSnap = await getDocs(lessonsRef);
+    lessonsSnap.forEach(doc => batch.delete(doc.ref));
 
-      // Adicionar aulas ao lote de exclusão
-      lessonsSnap.forEach((lessonDoc) => {
-        batch.delete(lessonDoc.ref);
-      });
+    // B. Deletar Perguntas do Quiz (Se houver)
+    const questionsRef = collection(db, "courses", courseId, "modules", modDoc.id, "questions");
+    const questionsSnap = await getDocs(questionsRef);
+    questionsSnap.forEach(doc => batch.delete(doc.ref));
 
-      // Adicionar o próprio módulo ao lote
-      batch.delete(modDoc.ref);
-    }
-
-    // Executa a exclusão de todos os módulos e aulas
-    await batch.commit();
-
-    // 3. Finalmente, apaga o documento do curso
-    await deleteDoc(doc(db, "courses", courseId));
-
-    console.log("Curso excluído com sucesso!");
-    return true;
-
-  } catch (error) {
-    console.error("Erro fatal ao excluir curso:", error);
-    throw error;
+    // C. Deletar o Módulo
+    batch.delete(modDoc.ref);
   }
+
+  // 3. Deletar o Curso
+  const courseRef = doc(db, "courses", courseId);
+  batch.delete(courseRef);
+
+  await batch.commit();
+  console.log("✅ Curso excluído com sucesso.");
+  return true;
 }

@@ -1,250 +1,245 @@
+// src/app/dashboard/courses/[id]/learn/page.tsx
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc, increment, arrayUnion, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthContext";
+import { useQueryClient } from "@tanstack/react-query"; // <--- 1. IMPORTAR ISTO
 import { useSidebar } from "@/context/SidebarContext";
-import { enrollStudent } from "@/services/enrollmentService";
-import { ChevronDown, ChevronUp, CheckCircle, PlayCircle, Trophy, Clock, Zap } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { CheckCircle, Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
-import QuizPlayer from "@/components/Course/QuizPlayer";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { finishLessonServerAction } from "@/app/actions/courseActions";
 
-type Lesson = { id: string; title: string; videoUrl: string; order: number; xpReward: number; duration?: string };
-type Module = { id: string; title: string; order: number; lessons: Lesson[] };
-type ContentType = "lesson" | "quiz";
+// Componentes
+import VideoPlayer from "@/components/Course/VideoPlayer";
+import QuizPlayer from "@/components/Course/QuizPlayer";
+import CourseSidebar from "@/components/Course/CourseSidebar";
 
-export default function CoursePlayer() {
+// Hooks e Store
+import { useCourseContent, useLesson } from "@/hooks/useCourses";
+import { useEnrollment, useCompleteLesson } from "@/hooks/useProgress";
+import { usePlayerStore } from "@/stores/usePlayerStore";
+import { formatDuration } from "@/utils/formatters";
+import { useAuth } from "@/context/AuthContext"; // Para pegar o ID do usuário
+
+export default function CoursePlayerPage() {
   const { id } = useParams();
-  const courseId = id as string;
-  const { user } = useAuth();
-  const { isExpanded } = useSidebar();
   const router = useRouter();
+  const queryClient = useQueryClient(); // <--- 2. INICIALIZAR O CLIENTE
+  const { user } = useAuth();
+  
+  const courseId = id as string;
+  const { isExpanded } = useSidebar();
+  const { addToast } = useToast();
+  
+  // Dados & Hooks Globais
+  const { data: contentData, isLoading: loadingContent } = useCourseContent(courseId);
+  const { data: enrollment } = useEnrollment(courseId);
+  const { mutate: completeLesson, isPending: markingComplete } = useCompleteLesson();
+
+  // Store Global do Player
+  const { 
+    activeLesson, activeModuleId, contentType, 
+    initialize, setActiveLesson, openQuiz, reset 
+  } = usePlayerStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [modules, setModules] = useState<Module[]>([]);
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
-  const [completedQuizzes, setCompletedQuizzes] = useState<string[]>([]);
-  const [openModules, setOpenModules] = useState<string[]>([]);
-
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [activeContentType, setActiveContentType] = useState<ContentType>("lesson");
+  // --- LAZY LOADING INTELIGENTE ---
+  const shouldFetchDetails = activeLesson && !activeLesson.videoUrl;
   
-  const [loading, setLoading] = useState(true);
-  const [markingComplete, setMarkingComplete] = useState(false);
+  const { data: lessonDetails, isLoading: loadingDetails } = useLesson(
+    courseId, 
+    activeModuleId, 
+    shouldFetchDetails ? activeLesson.id : undefined
+  );
 
-  // --- CARREGAMENTO DE DADOS (Igual ao anterior) ---
+  const currentVideoUrl = activeLesson?.videoUrl || lessonDetails?.videoUrl;
+  const currentDescription = lessonDetails?.description || activeLesson?.description;
+
+  const savedProgress = activeLesson && enrollment?.progressData?.[activeLesson.id]?.secondsWatched 
+    ? enrollment.progressData[activeLesson.id].secondsWatched 
+    : 0;
+
+  // --- LÓGICA DE NAVEGAÇÃO ---
+  const hasNextStep = useMemo(() => {
+    if (!contentData || !activeModuleId || !activeLesson) return false;
+    const currentModIndex = contentData.modules.findIndex(m => m.id === activeModuleId);
+    if (currentModIndex === -1) return false;
+    const currentMod = contentData.modules[currentModIndex];
+    const currentLessonIndex = currentMod.lessons.findIndex(l => l.id === activeLesson.id);
+
+    if (currentLessonIndex < currentMod.lessons.length - 1) return true;
+    if (currentModIndex < contentData.modules.length - 1) {
+       const nextMod = contentData.modules[currentModIndex + 1];
+       return nextMod.lessons.length > 0; 
+    }
+    return false;
+  }, [contentData, activeModuleId, activeLesson]);
+
+  // --- Efeitos ---
   useEffect(() => {
-    if (!user || !courseId) return;
-    const loadData = async () => {
-      try {
-        await enrollStudent(user.uid, courseId);
-        
-        const enrollmentSnap = await getDoc(doc(db, "enrollments", `${user.uid}_${courseId}`));
-        if (enrollmentSnap.exists()) {
-          const data = enrollmentSnap.data();
-          setCompletedLessons(data.completedLessons || []);
-          setCompletedQuizzes(data.completedQuizzes || []);
-        }
+    if (contentData && !activeLesson && contentType === 'lesson') {
+      const firstMod = contentData.modules[0];
+      if (firstMod?.lessons[0]) {
+        initialize(courseId, firstMod, firstMod.lessons[0]);
+      }
+    }
+    return () => { reset(); }
+  }, [contentData, courseId, initialize, reset]);
 
-        const modulesSnap = await getDocs(query(collection(db, "courses", courseId, "modules"), orderBy("order", "asc")));
-        const modulesData: Module[] = [];
-        
-        for (const modDoc of modulesSnap.docs) {
-          const lessonsSnap = await getDocs(query(collection(db, "courses", courseId, "modules", modDoc.id, "lessons"), orderBy("order", "asc")));
-          const lessonsList = lessonsSnap.docs.map(l => ({ id: l.id, ...l.data() } as Lesson));
-          modulesData.push({ id: modDoc.id, title: modDoc.data().title, order: modDoc.data().order, lessons: lessonsList });
-        }
-        setModules(modulesData);
-
-        if (modulesData.length > 0) {
-            setOpenModules([modulesData[0].id]);
-            if (modulesData[0].lessons.length > 0) {
-                setActiveLesson(modulesData[0].lessons[0]);
-                setActiveModuleId(modulesData[0].id);
-                setActiveContentType("lesson");
-            }
-        }
-      } catch (error) { console.error(error); } finally { setLoading(false); }
-    };
-    loadData();
-  }, [user, courseId]);
-
-  // --- ANIMAÇÃO DE AJUSTE DA MARGEM (SIDEBAR) ---
+  // Animação Layout
+  const paddingValue = isExpanded ? 430 : 180;
   useGSAP(() => {
-    gsap.to(containerRef.current, {
-        paddingLeft: isExpanded ? 380 : 130, // Ajustado para ficar igual ao print
+    if (containerRef.current) {
+      gsap.to(containerRef.current, {
+        paddingLeft: paddingValue,
         duration: 0.5,
-        ease: "power3.inOut"
-    });
+        ease: "power3.inOut",
+        overwrite: "auto"
+      });
+    }
   }, [isExpanded]);
 
-  // Handlers
-  const toggleModule = (modId: string) => {
-    setOpenModules(prev => prev.includes(modId) ? prev.filter(id => id !== modId) : [...prev, modId]);
-  };
+  // --- Handlers ---
 
-  const handleSelectLesson = (lesson: Lesson, moduleId: string) => {
-    setActiveLesson(lesson);
-    setActiveModuleId(moduleId);
-    setActiveContentType("lesson");
-  };
-
-  const handleSelectQuiz = (moduleId: string) => {
-    setActiveModuleId(moduleId);
-    setActiveContentType("quiz");
-  };
-
-  const handleCompleteLesson = async () => {
-    if (!user || !activeLesson || !activeModuleId) return;
-    if (completedLessons.includes(activeLesson.id)) return;
-
-    setMarkingComplete(true);
-    try {
-      const token = await user.getIdToken();
-      const result = await finishLessonServerAction(token, courseId, activeLesson.id, activeLesson.xpReward || 50);
-
-      if (result.success) {
-        setCompletedLessons(prev => [...prev, activeLesson!.id]); // ! garante não nulo
-        if (result.leveledUp) alert(`🎉 SUBIU DE NÍVEL! Agora você é Nível ${result.newLevel}!`);
-      } else {
-        alert("Erro: " + result.message);
+  const handleComplete = () => {
+    if (!activeLesson || !activeModuleId) return;
+    completeLesson({ courseId, moduleId: activeModuleId, lessonId: activeLesson.id }, {
+      onSuccess: (res) => {
+         if (res.success) addToast(res.leveledUp ? `SUBIU DE NÍVEL! Lvl ${res.newLevel}` : `Aula concluída! +${res.xpEarned} XP`, "success");
+         // Nota: O useCompleteLesson já faz a invalidação automática, por isso não precisa aqui
       }
-    } catch (error) { console.error(error); } finally { setMarkingComplete(false); }
+    });
   };
 
-  const handleQuizPassed = async (xpEarned: number) => {
-    if (!user || !activeModuleId) return;
-    setCompletedQuizzes(prev => [...prev, activeModuleId]);
-    try {
-        await updateDoc(doc(db, "enrollments", `${user.uid}_${courseId}`), { completedQuizzes: arrayUnion(activeModuleId), lastAccess: serverTimestamp() });
-        await updateDoc(doc(db, "users", user.uid), { xp: increment(xpEarned) });
-        alert(`Parabéns! +${xpEarned} XP`);
-    } catch (error) { console.error(error); }
+  const navigateToNext = () => {
+      if (!hasNextStep || !contentData || !activeModuleId || !activeLesson) return;
+      const currentModIndex = contentData.modules.findIndex(m => m.id === activeModuleId);
+      const currentMod = contentData.modules[currentModIndex];
+      const currentLessonIndex = currentMod.lessons.findIndex(l => l.id === activeLesson.id);
+
+      if (currentLessonIndex < currentMod.lessons.length - 1) {
+          const nextLesson = currentMod.lessons[currentLessonIndex + 1];
+          setActiveLesson(nextLesson, activeModuleId);
+          return;
+      }
+      if (currentModIndex < contentData.modules.length - 1) {
+          const nextMod = contentData.modules[currentModIndex + 1];
+          if (nextMod.lessons.length > 0) {
+              setActiveLesson(nextMod.lessons[0], nextMod.id);
+          }
+      }
   };
 
-  const totalItems = modules.reduce((acc, mod) => acc + mod.lessons.length + 1, 0);
-  const completedItems = completedLessons.length + completedQuizzes.length;
-  const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  // --- 🔥 AQUI ESTÁ A CORREÇÃO 🔥 ---
+  
+  // 1. Quando passar na prova, atualizamos os dados IMEDIATAMENTE
+  const handleQuizPass = async () => {
+      // Invalida o cache da matrícula -> Atualiza Sidebar (Check verde e barra de progresso)
+      await queryClient.invalidateQueries({ queryKey: ['enrollment', user?.uid, courseId] });
+      
+      // Invalida o cache do perfil -> Atualiza TopBar (XP e Nível)
+      // Nota: A key depende de como você configurou no AuthContext, mas geralmente 'userProfile' é seguro se usar custom hook
+      // Se o AuthContext usa onSnapshot (tempo real), ele atualiza sozinho. 
+      // Mas se o TopBar usar dados cacheados, forçamos aqui:
+      await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+  };
 
-  if (loading) return <div className={styles.loading}>Carregando...</div>;
+  // 2. Quando fechar (Continuar Jornada), decidimos para onde ir
+  const handleQuizClose = () => {
+      // Opção A: Voltar para a biblioteca
+      router.push('/dashboard/courses');
+      
+      // Opção B: Se quiser apenas fechar o player e mostrar a lista de aulas atualizada:
+      // reset(); 
+  };
+
+  // --- Renderização ---
+
+  if (loadingContent) return <div className={styles.loading}>Carregando estrutura...</div>;
+  if (!contentData) return <div className={styles.emptyState}>Conteúdo não disponível.</div>;
 
   return (
-    <div className={styles.playerContainer} ref={containerRef}>
-      
-      {/* --- CONTEÚDO PRINCIPAL (VÍDEO + CARD INFO) --- */}
-      <main className={styles.mainContent}>
-        
-        {activeContentType === 'quiz' && activeModuleId ? (
-            <div className={styles.quizWrapper}>
-                <QuizPlayer 
-                    courseId={courseId}
-                    moduleId={activeModuleId}
-                    onPass={handleQuizPassed}
-                    onClose={() => { /* lógica de fechar */ }}
+    <div className={styles.pageContainer} ref={containerRef}>
+      <section className={styles.topSection}>
+        <div className={styles.playerWrapper}>
+          {contentType === 'quiz' && activeModuleId ? (
+            <QuizPlayer 
+              courseId={courseId} 
+              moduleId={activeModuleId} 
+              onPass={handleQuizPass} // <--- Passamos a nova função de refresh
+              onClose={handleQuizClose}
+            />
+          ) : activeLesson ? (
+            (!currentVideoUrl && loadingDetails) ? (
+                <div className={styles.videoLoading}>
+                    <Loader2 className={styles.spin} size={40} color="#CA8DFF"/>
+                    <p>Carregando vídeo...</p>
+                </div>
+            ) : (
+                <VideoPlayer 
+                  key={activeLesson.id}
+                  src={currentVideoUrl || ""}
+                  courseId={courseId}
+                  lessonId={activeLesson.id}
+                  initialTime={savedProgress}
+                  onComplete={handleComplete}
+                  onNext={navigateToNext}
+                  autoPlayNext={hasNextStep}
                 />
-            </div>
-        ) : activeLesson ? (
-            <div className={styles.contentColumn}>
-                
-                {/* 1. PLAYER DE VÍDEO (CARD) */}
-                <div className={styles.videoPlayerFrame}>
-                    <video 
-                        key={activeLesson.videoUrl} 
-                        src={activeLesson.videoUrl} 
-                        controls 
-                        className={styles.videoElement} 
-                    />
-                </div>
-                
-                {/* 2. INFORMAÇÕES DA AULA (NOVO CARD SEPARADO) */}
-                <div className={styles.lessonInfoCard}>
-                    <div className={styles.lessonTitleRow}>
-                        <h1>{activeLesson.title}</h1>
-                        
-                        <button 
-                            onClick={handleCompleteLesson} 
-                            className={`${styles.completeBtn} ${completedLessons.includes(activeLesson.id) ? styles.btnDone : ""}`}
-                            disabled={markingComplete || completedLessons.includes(activeLesson.id)}
-                        >
-                            {completedLessons.includes(activeLesson.id) ? (
-                                <><CheckCircle size={18} /> Concluída</>
-                            ) : (
-                                <>{markingComplete ? "Salvando..." : "Concluir Aula"}</>
-                            )}
-                        </button>
-                    </div>
-
-                    <div className={styles.badgesRow}>
-                        <div className={styles.xpBadge}>+{activeLesson.xpReward || 50} XP</div>
-                        <div className={styles.timeBadge}>{activeLesson.duration || "15 min"}</div>
-                    </div>
-                </div>
-
-            </div>
-        ) : (
-            <div className={styles.emptyState}>Selecione uma aula.</div>
-        )}
-      </main>
-
-      {/* --- SIDEBAR DIREITA (ROTA) --- */}
-      <aside className={styles.rightSidebar}>
-        <div className={styles.studyRouteCard}>
-            <div className={styles.routeHeader}>
-                <h3>Rota de Estudos</h3>
-                <span className={styles.progressBadge}>{progressPercent}%</span>
-            </div>
-
-            <div className={styles.modulesList}>
-                {modules.map(mod => {
-                    const isOpen = openModules.includes(mod.id);
-                    return (
-                        <div key={mod.id} className={styles.moduleItem}>
-                            <div className={styles.moduleHeader} onClick={() => toggleModule(mod.id)}>
-                                <div className={styles.moduleTitle}>
-                                    <span className={styles.modLabel}>MÓDULO {mod.order}</span>
-                                    <strong>{mod.title}</strong>
-                                </div>
-                                {isOpen ? <ChevronUp size={16} color="#666"/> : <ChevronDown size={16} color="#666"/>}
-                            </div>
-
-                            {isOpen && (
-                                <div className={styles.lessonsContainer}>
-                                    {mod.lessons.map(lesson => {
-                                        const isActive = activeContentType === 'lesson' && activeLesson?.id === lesson.id;
-                                        const isDone = completedLessons.includes(lesson.id);
-                                        return (
-                                            <div 
-                                                key={lesson.id}
-                                                className={`${styles.lessonItem} ${isActive ? styles.active : ""}`}
-                                                onClick={() => handleSelectLesson(lesson, mod.id)}
-                                            >
-                                                <div className={styles.lessonIcon}>
-                                                    {isDone ? <CheckCircle size={16} color="#4ade80"/> : <CheckCircle size={16} color="#333"/>}
-                                                </div>
-                                                <div className={styles.lessonMeta}>
-                                                    <span className={styles.lessonName}>{lesson.title}</span>
-                                                    <span className={styles.lessonDuration}>{lesson.duration || "10 min"}</span>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                    {/* Quiz Item (Opcional, igual antes) */}
-                                </div>
-                            )}
-                        </div>
-                    )
-                })}
-            </div>
+            )
+          ) : null}
         </div>
-      </aside>
 
+        <aside className={styles.sidebarWrapper}>
+           <CourseSidebar 
+             courseId={courseId}
+             modules={contentData.modules}
+             activeLessonId={activeLesson?.id}
+             activeModuleId={activeModuleId}
+             contentType={contentType}
+             completedLessons={enrollment?.completedLessons || []}
+             completedQuizzes={enrollment?.completedQuizzes || []} // Isso agora virá atualizado!
+             onSelectLesson={(lesson, modId) => setActiveLesson(lesson, modId)}
+             onSelectQuiz={(modId) => openQuiz(modId)}
+           />
+        </aside>
+      </section>
+
+      {activeLesson && contentType === 'lesson' && (
+        <section className={styles.infoSection}>
+            <div className={styles.infoHeader}>
+               <div className={styles.titleGroup}>
+                  <h1 className={styles.lessonTitle}>{activeLesson.title}</h1>
+                  <div className={styles.badges}>
+                      <span className={styles.badge}>
+                        {typeof activeLesson.duration === 'number' 
+                            ? formatDuration(activeLesson.duration) 
+                            : activeLesson.duration || "00:00"}
+                      </span>
+                      <span className={`${styles.badge} ${styles.xpBadge}`}>+{activeLesson.xpReward} XP</span>
+                  </div>
+               </div>
+
+               <button 
+                 onClick={handleComplete}
+                 disabled={enrollment?.completedLessons.includes(activeLesson.id) || markingComplete}
+                 className={`${styles.actionBtn} ${enrollment?.completedLessons.includes(activeLesson.id) ? styles.done : ''}`}
+               >
+                 {enrollment?.completedLessons.includes(activeLesson.id) 
+                   ? <><CheckCircle size={18} /> Concluída</> 
+                   : "Concluir Aula"
+                 }
+               </button>
+            </div>
+            <div className={styles.divider} />
+            <div className={styles.descriptionBox}>
+                <p>{currentDescription || "Sem descrição disponível para esta aula."}</p>
+            </div>
+        </section>
+      )}
     </div>
   );
 }

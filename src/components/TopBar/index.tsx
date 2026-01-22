@@ -1,32 +1,30 @@
+// src/components/TopBar/index.tsx
 "use client";
 
 import { useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import styles from "./styles.module.css";
-// Removemos framer-motion
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { getLevelProgress } from "@/lib/gameRules";
+import { Coins } from "lucide-react";
 
 export default function TopBar() {
   const { profile } = useAuth();
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Cálculo de XP
-  const nextLevelXp = (profile?.level || 1) * 1000;
   const currentXp = profile?.xp || 0;
-  const progressPercentage = Math.min((currentXp / nextLevelXp) * 100, 100);
+  const currentCoins = profile?.wallet?.coins || 0;
+  const progressPercentage = getLevelProgress(currentXp);
 
-  // Animação GSAP
   useGSAP(() => {
     if(!barRef.current) return;
 
-    // Anima a largura e a cor (brilho ao encher)
     gsap.to(barRef.current, {
       width: `${progressPercentage}%`,
       duration: 1.5,
       ease: "power2.out",
       onUpdate: function() {
-        // Opcional: Efeito de brilho enquanto enche
         if (this.progress() < 1) {
             barRef.current!.style.filter = "brightness(1.3)";
         } else {
@@ -34,30 +32,45 @@ export default function TopBar() {
         }
       }
     });
-  }, [progressPercentage]); // Reage sempre que o XP muda
+  }, [progressPercentage]);
 
   return (
     <header className={styles.header}>
-      <div className={styles.statsContainer}>
-        <div className={styles.levelBadge}>
-          <span>LVL</span>
-          <strong>{profile?.level || 1}</strong>
+      <div className={styles.hudContainer}>
+        
+        {/* GRUPO 1: NÍVEL E PROGRESSO */}
+        <div className={styles.levelGroup}>
+          <div className={styles.levelBadge}>
+            <span>LVL</span>
+            <strong>{profile?.level || 1}</strong>
+          </div>
+
+          <div className={styles.xpWrapper}>
+            <div className={styles.xpInfo}>
+              <span className={styles.xpLabel}>Progresso</span>
+              <span className={styles.xpValue}>{currentXp} XP</span>
+            </div>
+            <div className={styles.progressBarBg}>
+              <div 
+                ref={barRef} 
+                className={styles.progressBarFill} 
+                style={{ width: '0%' }} 
+              />
+            </div>
+          </div>
         </div>
 
-        <div className={styles.xpWrapper}>
-          <div className={styles.xpInfo}>
-            <span>XP</span>
-            <span>{currentXp} / {nextLevelXp}</span>
-          </div>
-          <div className={styles.progressBarBg}>
-            {/* Div normal com ref para o GSAP */}
-            <div 
-              ref={barRef} 
-              className={styles.progressBarFill} 
-              style={{ width: '0%' }} 
-            />
-          </div>
+        {/* Separador Vertical */}
+        <div className={styles.divider} />
+
+        {/* GRUPO 2: MOEDAS */}
+        <div className={styles.coinsWrapper} title="Saldo PackCoins">
+           <div className={styles.coinIconBg}>
+             <Coins size={16} color="#fbbf24" strokeWidth={2.5} />
+           </div>
+           <span className={styles.coinValue}>{currentCoins}</span>
         </div>
+
       </div>
     </header>
   );

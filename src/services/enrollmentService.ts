@@ -26,29 +26,3 @@ export async function enrollStudent(userId: string, courseId: string) {
 
   return enrollmentId;
 }
-
-/**
- * Marca uma aula como concluída e atribui XP ao usuário.
- * Essa função deve ser chamada quando o vídeo termina ou o quiz é passado.
- */
-export async function completeLesson(userId: string, courseId: string, lessonId: string, xpReward: number = 50) {
-  const enrollmentId = `${userId}_${courseId}`;
-  const enrollmentRef = doc(db, "enrollments", enrollmentId);
-  const userRef = doc(db, "users", userId);
-
-  // 1. Atualiza a matrícula
-  await updateDoc(enrollmentRef, {
-    completedLessons: arrayUnion(lessonId),
-    lastAccess: serverTimestamp()
-    // Nota: O cálculo da % de progresso idealmente deve ser feito aqui 
-    // sabendo o total de aulas, ou via Cloud Function.
-  });
-
-  // 2. Dá o XP para o usuário (Gamificação!)
-  // O updateDoc é seguro e atômico com 'increment'
-  await updateDoc(userRef, {
-    xp: increment(xpReward)
-  });
-  
-  // TODO: Verificar se subiu de nível (pode ser feito aqui ou no backend)
-}

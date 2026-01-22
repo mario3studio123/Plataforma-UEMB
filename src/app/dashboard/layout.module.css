@@ -97,14 +97,23 @@
 .heroGradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #0f0d11 15%, rgba(15, 13, 17, 0.8) 40%, rgba(15, 13, 17, 0.2) 100%),
-              linear-gradient(0deg, #0f0d11 0%, transparent 60%);
+  background: linear-gradient(
+      90deg, 
+      #000000 15%,                 /* Cor Sólida na esquerda */
+      rgba(0, 0, 0, 0.8) 40%,   /* Cor semi-transparente no meio */
+      rgba(0, 0, 0, 0.2) 100%   /* Quase transparente na direita */
+    ),
+    linear-gradient(
+      0deg, 
+      #0f0d11 0%,                  /* Cor Sólida embaixo (conecta com o carrossel) */
+      transparent 60%              /* Transparente em cima */
+    );
 }
 
 .heroContent {
   position: relative;
   z-index: 2;
-  max-width: 600px;
+  max-width: 750px;
   padding-right: 20px;
 }
 
@@ -116,32 +125,32 @@
 }
 
 .heroTitle {
-  font-size: 3.5rem;
-  font-weight: 700;
+  font-size: 3.25rem;
+  font-weight: 600;
   line-height: 1.1;
   color: #fff;
-  margin-bottom: 16px;
-  text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  margin-bottom: 6px;
 }
 
 .heroDescription {
-  font-size: 1rem;
+  font-size: 1.35rem;
   color: #a1a1aa;
-  line-height: 1.6;
-  margin-bottom: 32px;
+  font-weight: 200;
+  margin-bottom: 24px;
   max-width: 480px;
 }
 
 .metaTags {
   display: flex;
   gap: 12px;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .chip {
-  display: flex; align-items: center; gap: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+  background: #3E3347;
   padding: 8px 16px;
   border-radius: 99px;
   font-size: 0.85rem;
@@ -153,12 +162,12 @@
 
 .heroBtn {
   background-color: #CA8DFF; /* Roxo da imagem */
-  color: #0f0d11;
+  color: #fff;
   border: none;
-  padding: 8px 8px 8px 24px;
+  padding: 4px 4px 4px 20px;
   border-radius: 99px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 300;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -305,6 +314,27 @@
   background-color: #2a2730;
 }
 
+.carouselFade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 200px; /* Largura do gradiente. Aumente se quiser mais suave */
+    z-index: 20; /* Fica acima dos cards */
+    pointer-events: none; /* O PULO DO GATO: Permite clicar nos cards "atrás" do gradiente */
+}
+
+.fadeLeft {
+    left: 0;
+    /* Começa sólido na cor do fundo e vai ficando transparente */
+    background: linear-gradient(to right, #0f0d11 10%, rgba(15, 13, 17, 0) 100%);
+}
+
+.fadeRight {
+    right: 0;
+    /* Começa sólido na direita e vai ficando transparente para a esquerda */
+    background: linear-gradient(to left, #0f0d11 10%, rgba(15, 13, 17, 0) 100%);
+}
+
 .viewMoreText {
   color: #fff;
   font-size: 1rem;
@@ -328,4 +358,18 @@
   background-color: #fff;
   color: #000;
   transform: rotate(-45deg); /* Pequeno efeito visual opcional */
+}
+
+.topBarWrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 20; /* Garante que fique acima do gradiente do Hero */
+  width: 100%;
+  pointer-events: none; /* Deixa clicar no Hero através das áreas vazias */
+}
+
+/* Garante que os botões da TopBar ainda sejam clicáveis */
+.topBarWrapper > header {
+  pointer-events: auto;
 }

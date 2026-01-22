@@ -1,0 +1,185 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background-color: rgba(10, 10, 12, 0.85);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0; /* GSAP controla */
+    perspective: 1000px;
+}
+
+.ambientGlow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(145, 91, 245, 0.4) 0%, transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: #161418;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 32px;
+    padding: 40px 32px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    z-index: 10;
+    transform-style: preserve-3d;
+}
+
+/* Icone Flutuante no Topo */
+.iconWrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -80px; /* Sobe para fora do card */
+    background: #161418;
+    border: 4px solid #161418;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.success { color: #4ade80; background: linear-gradient(135deg, #161418, #064e3b); }
+.fail { color: #ef4444; background: linear-gradient(135deg, #161418, #7f1d1d); }
+
+.title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -1px;
+    text-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+
+.scoreWrapper {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.anim-score {
+    font-size: 3.5rem;
+    font-weight: 700;
+    background: linear-gradient(180deg, #fff, #999);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.scoreLabel {
+    font-size: 0.9rem;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* Área de Progresso */
+.progressSection {
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    padding: 20px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.levelBadge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #2d2833;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    justify-content: center;
+    border: 1px solid #CA8DFF;
+    box-shadow: 0 0 15px rgba(145, 91, 245, 0.2);
+}
+
+.levelLabel { font-size: 0.6rem; color: #CA8DFF; font-weight: 700; }
+
+.barContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.barTrack {
+    width: 100%;
+    height: 10px;
+    background: #0f0d11;
+    border-radius: 99px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.barFill {
+    height: 100%;
+    background: linear-gradient(90deg, #915bf5, #d8b4fe);
+    width: 0%;
+    border-radius: 99px;
+    position: relative;
+}
+
+/* Efeito de brilho percorrendo a barra */
+.barGlow {
+    position: absolute;
+    top: 0; bottom: 0; left: 0; width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: translateX(-100%);
+    animation: shine 2s infinite;
+}
+
+.xpInfo {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #888;
+    font-weight: 600;
+}
+
+.xpPill {
+    background: rgba(74, 222, 128, 0.1);
+    color: #4ade80;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.actionBtn {
+    width: 100%;
+    background: #fff;
+    color: #000;
+    font-weight: 700;
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+}
+
+.actionBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255,255,255,0.15);
+}
+
+@keyframes shine {
+    100% { transform: translateX(100%); }
+}

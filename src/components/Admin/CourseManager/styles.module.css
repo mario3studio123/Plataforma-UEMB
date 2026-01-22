@@ -1,0 +1,76 @@
+/* Container do Toggle */
+.container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0,0,0,0.2);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.statusInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-size: 0.7rem;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.published { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
+.draft { color: #fbbf24; }
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+/* Botão Verde (Publicar) */
+.btnPublish {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+.btnPublish:hover:not(:disabled) {
+  background: #4ade80;
+  color: #000;
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
+}
+
+/* Botão Amarelo/Laranja (Despublicar/Voltar p Rascunho) */
+.btnDraft {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.btnDraft:hover:not(:disabled) {
+  background: #fbbf24;
+  color: #000;
+}
+
+.toggleBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }

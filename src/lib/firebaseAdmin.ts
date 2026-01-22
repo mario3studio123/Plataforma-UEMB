@@ -8,10 +8,12 @@ if (!admin.apps.length) {
       // Corrige a formatação da chave privada se vier com \n escapado
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
   });
 }
 
 const adminDb = admin.firestore();
 const adminAuth = admin.auth();
+const adminStorage = admin.storage();
 
-export { adminDb, adminAuth };
+export { adminDb, adminAuth, adminStorage };

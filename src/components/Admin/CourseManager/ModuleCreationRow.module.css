@@ -1,0 +1,65 @@
+.addButton {
+    width: 100%;
+    padding: 16px;
+    background-color: rgba(255,255,255,0.03);
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addButton:hover {
+    background-color: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.creationContainer {
+    width: 100%;
+    padding: 16px 24px; /* Mesmo padding do Header do Módulo para alinhar */
+    background-color: #1a181d;
+    border: 1px solid #915bf5;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fadeIn 0.2s ease;
+}
+
+.input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.input::placeholder { color: #555; }
+
+.actions { display: flex; gap: 8px; }
+
+.confirmBtn {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: #915bf5; color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.confirmBtn:hover { background: #7c3aed; }
+
+.cancelBtn {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: #2d2833; color: #888; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.cancelBtn:hover { color: #ff6b6b; background: rgba(255, 107, 107, 0.1); }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }

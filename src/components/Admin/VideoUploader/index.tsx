@@ -1,107 +1,123 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { UploadCloud, FileVideo, CheckCircle, X, Loader2 } from "lucide-react";
+import { UploadCloud, CheckCircle, X, Loader2, PlayCircle } from "lucide-react";
 import styles from "./styles.module.css";
-import { uploadFile, deleteFile } from "@/services/storageService";
+import { useVideoUpload } from "@/hooks/admin/useVideoUpload";
+import { VideoMetadata } from "@/lib/schemas/courseSchemas";
 
 interface VideoUploaderProps {
-  folderPath: string; // Ex: courses/123/modules/456
-  currentVideoUrl?: string; // Se já existir um vídeo (edição)
-  onUploadComplete: (url: string, fileName: string) => void;
-  onRemove: () => void; // Para limpar o campo no pai
+  folderPath: string;
+  currentVideoUrl?: string;
+  // MUDANÇA AQUI: Removemos os dois separados e usamos um único
+  onSuccess: (url: string, meta: VideoMetadata) => void;
+  onRemove: () => void;
 }
 
-export default function VideoUploader({ folderPath, currentVideoUrl, onUploadComplete, onRemove }: VideoUploaderProps) {
-  const [dragActive, setDragActive] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(currentVideoUrl || null);
-
+export default function VideoUploader({ 
+  folderPath, 
+  currentVideoUrl, 
+  onSuccess, // Recebe a função unificada
+  onRemove 
+}: VideoUploaderProps) {
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-  // --- Handlers de Drag & Drop ---
+  // Hook configurado para chamar o onSuccess direto
+  const { 
+    uploading, 
+    progress, 
+    videoUrl, 
+    videoMeta, 
+    startUpload, 
+    cancelUpload, 
+    removeVideo 
+  } = useVideoUpload(
+    currentVideoUrl, 
+    undefined, 
+    // Callback Interno: Repassa tudo direto para o pai
+    (url, meta) => {
+      onSuccess(url, meta);
+    }
+  );
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.[0]) {
+      startUpload(e.dataTransfer.files[0], folderPath);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files?.[0]) {
+      startUpload(e.target.files[0], folderPath);
     }
+    if (inputRef.current) inputRef.current.value = "";
   };
 
-  // --- Lógica de Upload ---
-  const handleFile = async (selectedFile: File) => {
-    // Validação básica
-    if (!selectedFile.type.startsWith("video/")) {
-      alert("Por favor, selecione apenas arquivos de vídeo.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setUploading(true);
-    setProgress(0);
-
-    // Se já tinha um vídeo antes e estamos trocando, seria bom deletar o antigo?
-    // Por segurança, muitas vezes deixamos órfão ou deletamos só ao salvar o form final.
-    // Aqui vou assumir que sobrescrevemos visualmente.
-
-    try {
-      // Cria um nome único com timestamp para evitar cache ou sobrescrita errada
-      const uniqueName = `${Date.now()}_${selectedFile.name}`;
-      const fullPath = `${folderPath}/${uniqueName}`;
-
-      const url = await uploadFile(selectedFile, fullPath, (prog) => {
-        setProgress(prog);
-      });
-
-      setPreviewUrl(url);
-      onUploadComplete(url, uniqueName);
-    } catch (error) {
-      console.error("Erro no upload:", error);
-      alert("Falha ao enviar vídeo.");
-      setFile(null);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveVideo = async () => {
-    if (previewUrl && !uploading) {
-        // Opcional: Deletar do storage imediatamente ou esperar o "Salvar" do form pai.
-        // Para economizar storage, vamos deletar se for um upload recente.
-        if (confirm("Remover este vídeo?")) {
-            // await deleteFile(previewUrl); // Descomente se quiser deletar do storage na hora
-            setPreviewUrl(null);
-            setFile(null);
-            setProgress(0);
-            onRemove();
-        }
-    }
+  const handleManualRemove = async () => {
+      if (confirm("Tem certeza? O vídeo será removido.")) {
+          await removeVideo();
+          onRemove();
+      }
   };
 
   return (
     <div className={styles.container}>
-      {/* Estado 1: Nenhum vídeo selecionado */}
-      {!previewUrl && !uploading && (
+      {/* 1. UPLOADING */}
+      {uploading && (
+        <div className={styles.uploadingState}>
+            <div className={styles.uploadHeader}>
+                <div className={styles.fileInfo}>
+                    <Loader2 size={18} className={styles.spin} color="#915bf5" />
+                    <span className={styles.fileName}>{videoMeta?.filename || "Enviando..."}</span>
+                </div>
+                <button onClick={cancelUpload} className={styles.cancelTextBtn}>Cancelar</button>
+            </div>
+            <div className={styles.progressBarBg}>
+                <div className={styles.progressBarFill} style={{ width: `${progress}%` }} />
+            </div>
+            <p className={styles.uploadStatus}>{Math.round(progress)}% concluído</p>
+        </div>
+      )}
+
+      {/* 2. SUCESSO / PREVIEW */}
+      {!uploading && videoUrl && (
+        <div className={styles.previewState}>
+            <div className={styles.previewContent}>
+                <div className={styles.videoIconBox}>
+                    <PlayCircle size={24} color="#fff" />
+                </div>
+                <div className={styles.previewInfo}>
+                    <div className={styles.successBadge}>
+                        <CheckCircle size={14} className={styles.iconSuccess} />
+                        <span>Vídeo Carregado</span>
+                    </div>
+                    {videoMeta && videoMeta.duration > 0 && (
+                        <span className={styles.fileMeta}>
+                            Duração: {Math.floor(videoMeta.duration / 60)}:{String(Math.round(videoMeta.duration % 60)).padStart(2, '0')}
+                        </span>
+                    )}
+                </div>
+            </div>
+            <button type="button" onClick={handleManualRemove} className={styles.removeBtn}>
+                <X size={18} />
+            </button>
+        </div>
+      )}
+
+      {/* 3. DROPZONE */}
+      {!uploading && !videoUrl && (
         <div 
             className={`${styles.dropZone} ${dragActive ? styles.active : ""}`}
             onDragEnter={handleDrag}
@@ -110,56 +126,12 @@ export default function VideoUploader({ folderPath, currentVideoUrl, onUploadCom
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
         >
-          <input 
-            ref={inputRef} 
-            type="file" 
-            accept="video/*" 
-            onChange={handleChange} 
-            hidden 
-          />
-          <div className={styles.iconCircle}>
-            <UploadCloud size={24} color="#CA8DFF" />
+          <input ref={inputRef} type="file" accept="video/mp4,video/webm" onChange={handleChange} hidden />
+          <div className={styles.iconCircle}><UploadCloud size={24} color="#CA8DFF" /></div>
+          <div className={styles.dropTextContent}>
+            <p className={styles.dropTextMain}>Clique ou arraste o vídeo</p>
+            <p className={styles.dropTextSub}>MP4 ou WebM (Máx 2GB)</p>
           </div>
-          <p className={styles.dropText}>
-            Clique ou arraste o vídeo aqui <br />
-            <span>(MP4, WebM - Max 500MB)</span>
-          </p>
-        </div>
-      )}
-
-      {/* Estado 2: Upload em andamento */}
-      {uploading && (
-        <div className={styles.uploadingState}>
-            <div className={styles.fileInfo}>
-                <FileVideo size={20} color="#ccc" />
-                <span className={styles.fileName}>{file?.name}</span>
-            </div>
-            <div className={styles.progressBarBg}>
-                <div 
-                    className={styles.progressBarFill} 
-                    style={{ width: `${progress}%` }} 
-                />
-            </div>
-            <span className={styles.percentage}>{Math.round(progress)}%</span>
-        </div>
-      )}
-
-      {/* Estado 3: Vídeo Pronto / Preview */}
-      {previewUrl && !uploading && (
-        <div className={styles.previewState}>
-            <video src={previewUrl} className={styles.miniVideo} controls />
-            <div className={styles.previewInfo}>
-                <span className={styles.successBadge}>
-                    <CheckCircle size={14} /> Upload Concluído
-                </span>
-                <button 
-                    type="button" 
-                    onClick={handleRemoveVideo} 
-                    className={styles.removeBtn}
-                >
-                    <X size={16} /> Remover
-                </button>
-            </div>
         </div>
       )}
     </div>

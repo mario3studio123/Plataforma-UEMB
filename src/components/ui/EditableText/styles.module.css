@@ -1,0 +1,58 @@
+.displayContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: text;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.displayContainer:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.editIcon {
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: #666;
+}
+
+.displayContainer:hover .editIcon {
+    opacity: 1;
+}
+
+.editContainer {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    position: relative;
+}
+
+.input {
+    background-color: #0f0d11;
+    border: 1px solid #915bf5;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: inherit;
+    font-weight: inherit;
+    font-family: inherit;
+    width: 100%;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(145, 91, 245, 0.2);
+}
+
+.actions {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }

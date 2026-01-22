@@ -1,0 +1,233 @@
+.container {
+
+  width: 100%;
+  padding-top: 50px;   /* Distância do topo */
+  padding-right: 80px; /* Distância fixa da direita */
+  padding-bottom: 50px;
+  
+  /* O padding-left será injetado pelo GSAP no componente (380px ou 130px) */
+
+  color: #fff;
+  min-height: 100vh;
+}
+
+.loadingScreen {
+  display: flex; height: 80vh; align-items: center; justify-content: center; color: #888;
+}
+
+/* --- GRID SUPERIOR --- */
+.headerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr; /* Proporção da imagem */
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background-color: #1a1620; /* Fundo escuro */
+  border-radius: 20px;
+  padding: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.statContent { display: flex; flex-direction: column; gap: 4px; }
+.bigNumber { font-size: 3rem; font-weight: 600; line-height: 1; color: #fff; }
+.label { font-size: 1rem; color: #888; }
+
+.iconCircle {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.iconPurple { background-color: #CA8DFF; color: #fff; }
+.iconPink { background-color: #CA8DFF; color: #fff; /* Ajuste se quiser igual a foto, parece lilás */ } 
+
+/* Card do Relógio */
+.clockCard {
+  background-color: #1a1620;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 32px;
+}
+
+.clockHeader { display: flex; gap: 8px; font-size: 0.9rem; color: #fff; margin-bottom: 8px; }
+.clockBody { display: flex; align-items: center; gap: 16px; }
+.iconClock { background-color: #CA8DFF; color: #fff; }
+.clockTime { font-size: 3.5rem; font-weight: 700; line-height: 1; font-family: monospace; }
+.dateLabel { color: #666; font-size: 0.85rem; margin-top: 4px; }
+
+
+/* --- GRID DO PÓDIO --- */
+.podiumGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr; /* 1º Lugar é mais largo */
+  gap: 24px;
+  margin-bottom: 40px;
+  align-items: stretch; /* Mesma altura */
+}
+
+.podiumCard {
+  background-color: #1a1620;
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: space-between;
+}
+
+/* 1º LUGAR - Estilo Roxo */
+.winnerCard {
+  background-color: #CA8DFF; /* Cor Lilás da imagem */
+  color: #1a1620; /* Texto escuro para contraste */
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.avatarWrapper { position: relative; }
+.avatar {
+  width: 72px; height: 72px; background: #131116; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.5rem;
+  overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.rankBadgeWhite {
+  position: absolute; bottom: 0; right: 0;
+  width: 24px; height: 24px; background: #fff; color: #000;
+  border-radius: 50%; font-size: 0.8rem; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.userInfo h3 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.userInfo span { font-size: 0.9rem; opacity: 0.8; }
+
+.medalPos {
+  position: absolute;
+  top: 0;
+  right: 40px; /* Ajuste da medalha pendurada */
+}
+
+.badgePillWinner {
+  background: rgba(0,0,0,0.1);
+  color: #1a1620;
+  padding: 6px 16px;
+  border-radius: 99px;
+  width: fit-content;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 30px;
+}
+
+.statsRowWinner {
+  display: flex; justify-content: space-between;
+}
+.statsRowWinner .statItem span { font-size: 0.8rem; opacity: 0.7; display: block; }
+.statsRowWinner .statItem strong { font-size: 1.4rem; font-weight: 700; }
+
+/* 2º e 3º LUGAR - Estilo Dark */
+.cardHeaderSmall { display: flex; justify-content: space-between; margin-bottom: 40px; }
+.userInfoSmall h3 { font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.badgePill {
+  background: #2d2833; color: #aaa; padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; width: fit-content;
+}
+
+.medalPosSmall {
+  position: absolute; top: 0; right: 40px;
+}
+
+.statsRow { display: flex; justify-content: space-between; }
+.statItem span { color: #888; font-size: 0.8rem; display: block; margin-bottom: 4px; }
+.statItem strong { color: #fff; font-size: 1.4rem; font-weight: 700; }
+
+
+/* --- MEDALHA CSS PURA --- */
+.medalWrapper {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.ribbon {
+  position: absolute; top: -32px; /* Sobe para fora do card */
+  width: 40px; height: 50px;
+  display: flex; justify-content: space-between;
+  z-index: 1;
+}
+.ribbonLeft, .ribbonRight {
+  width: 14px; height: 100%;
+  background: #E11D48; /* Vermelho fita */
+  border-radius: 0 0 4px 4px;
+}
+
+.coin {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  z-index: 2;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 10px; /* Desce um pouco da fita */
+}
+
+.coinInner {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+
+/* --- LISTA GLOBAL --- */
+.listSection {
+  background-color: #1a1620;
+  border-radius: 24px;
+  padding: 32px;
+}
+
+.listTitle { font-size: 1.5rem; margin-bottom: 24px; color: #fff; }
+
+.tableWrapper {
+  max-height: 400px; /* Scroll vertical se lista for grande */
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Scrollbar fina escura */
+.tableWrapper::-webkit-scrollbar { width: 6px; }
+.tableWrapper::-webkit-scrollbar-track { background: #131116; border-radius: 3px; }
+.tableWrapper::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+.table { width: 100%; border-collapse: collapse; text-align: left; }
+.table th {
+  color: #666; font-size: 0.85rem; font-weight: 500; padding: 16px;
+  border-bottom: 1px solid #2d2833;
+}
+.table td {
+  padding: 16px; color: #ccc; font-size: 0.95rem;
+  border-bottom: 1px solid #221d29;
+}
+.table tr:last-child td { border-bottom: none; }
+
+.rankCircle {
+  width: 32px; height: 32px; background: #d0a2f7; color: #000;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 0.9rem;
+}
+
+.userCell { display: flex; align-items: center; gap: 12px; }
+.smallAvatar {
+  width: 40px; height: 40px; background: #d0a2f7; border-radius: 50%;
+  overflow: hidden; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold;
+}
+.smallAvatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.pointsCell { font-weight: bold; color: #fff; }

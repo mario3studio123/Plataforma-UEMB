@@ -1,238 +1,216 @@
-.playerContainer {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-  background-color: #0f0d11; /* Fundo global bem escuro */
-  color: #fff;
-  padding-top: 120px;
-  padding-right: 40px;
-  padding-bottom: 40px;
-  /* padding-left controlado pelo GSAP */
-  gap: 32px;
-}
-
-/* Coluna de Conteúdo (Esquerda) */
-.mainContent {
-  flex: 1;
+.pageContainer {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-}
-
-.contentColumn {
-    display: flex;
-    flex-direction: column;
-    gap: 20px; /* Espaço entre o vídeo e o card de info */
-    animation: fadeIn 0.6s ease;
-}
-
-/* 1. CARD DO VÍDEO */
-.videoPlayerFrame {
   width: 100%;
-  aspect-ratio: 16/9;
+  min-height: 100vh;
+  background-color: #0f0d11;
+  color: #fff;
+  
+  /* Paddings globais */
+  padding-top: 140px;
+  padding-right: 40px;
+  padding-bottom: 60px;
+  padding-left: 450px;
+  
+  box-sizing: border-box;
+}
+
+/* --- SEÇÃO SUPERIOR (Vídeo + Lista) --- */
+.topSection {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  
+  /* O SEGREDO: Stretch força os filhos a terem a mesma altura */
+  align-items: stretch; 
+  
+  /* Garante que a altura seja definida pelo vídeo (aspect-ratio), não pelo conteúdo da lista */
+  height: auto; 
+}
+
+/* Container do Vídeo */
+.playerWrapper {
+  flex: 1; /* Ocupa todo o espaço disponível */
+  min-width: 0; /* Evita overflow flexbox */
+  
+  /* Aspect Ratio mantém o formato 16:9 independente da largura */
+  aspect-ratio: 16/9; 
+  
   background-color: #000;
   border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   border: 1px solid #2d2833;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  z-index: 10;
 }
 
-.videoElement {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+/* Container da Sidebar (Wrapper) */
+.sidebarWrapper {
+  width: 400px; /* Largura fixa da lista */
+  min-width: 350px;
+  
+  /* IMPORTANTE: Relative para o filho Absolute se basear nele */
+  position: relative; 
+  flex-shrink: 0;
+  
+  /* Não defina height aqui, o align-items: stretch cuida disso */
 }
 
-/* 2. CARD DE INFORMAÇÕES (O que aparece no print embaixo do vídeo) */
-.lessonInfoCard {
-    background-color: #131116; /* Um pouco mais claro que o fundo */
-    border: 1px solid #2d2833;
-    border-radius: 24px;
-    padding: 24px 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+/* --- SEÇÃO INFERIOR (Infos) --- */
+.infoSection {
+  width: 100%; /* Ocupa a largura total do pai (pageContainer) */
+  margin-top: 32px; /* Espaço entre o vídeo e as infos */
+  
+  background-color: #131116; /* Fundo do card de info */
+  border: 1px solid #2d2833;
+  border-radius: 24px;
+  padding: 32px;
+  
+  animation: slideUp 0.5s ease-out;
 }
 
-.lessonTitleRow {
+.infoHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
-.lessonInfoCard h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lessonTitle {
+  font-size: 2.3rem;
+  font-weight: 500;
   color: #fff;
-  margin: 0;
+  line-height: 1.1;
 }
 
-/* Badges (Tags) */
-.badgesRow {
+.badges {
   display: flex;
   gap: 12px;
 }
 
-.xpBadge, .timeBadge {
-  background-color: #27232B; /* Fundo da badge */
-  color: #a1a1aa;
-  padding: 6px 16px;
-  border-radius: 99px;
+.badge {
+  background: #1f1d24;
+  color: #aaa;
+  padding: 6px 12px;
+  border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .xpBadge {
-  background-color: rgba(145, 91, 245, 0.15);
+  background: rgba(145, 91, 245, 0.1);
   color: #d8b4fe;
-  border-color: rgba(145, 91, 245, 0.2);
+  border: 1px solid rgba(145, 91, 245, 0.2);
 }
 
-/* Botão de Concluir */
-.completeBtn {
-  background-color: transparent;
-  color: #4ade80; /* Verde texto */
-  border: 1px solid rgba(74, 222, 128, 0.3);
-  padding: 10px 24px;
+.actionBtn {
+  background: #2d2833;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 14px 28px;
   border-radius: 12px;
-  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   transition: all 0.2s;
 }
 
-.completeBtn:hover {
-  background-color: rgba(74, 222, 128, 0.1);
+.actionBtn:hover:not(:disabled) {
+  background: #915bf5;
+  border-color: #915bf5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(145, 91, 245, 0.3);
 }
 
-.completeBtn.btnDone {
-  background-color: rgba(74, 222, 128, 0.1);
-  border-color: transparent;
+.actionBtn.done {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+  cursor: default;
+}
+.actionBtn.done:hover { transform: none; box-shadow: none; }
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 32px 0;
 }
 
-
-/* --- SIDEBAR DIREITA (ROTA) --- */
-.rightSidebar {
-  width: 360px;
-  flex-shrink: 0;
+.descriptionBox {
+  width: 100%;
+  max-width: 100%; /* Garante que o texto use a largura total se necessário */
 }
 
-.studyRouteCard {
-  background-color: #1a1620; /* Fundo roxo bem escuro/cinza */
-  border-radius: 24px;
-  border: 1px solid #2d2833;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 140px);
-  position: sticky;
-  top: 100px;
+.descriptionBox p {
+  color: #ccc;
+  line-height: 1.7;
+  font-size: 1.05rem;
 }
 
-.routeHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+/* Loading States */
+.loading, .emptyState {
+  display: flex; align-items: center; justify-content: center;
+  height: 80vh; color: #666;
 }
 
-.routeHeader h3 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.progressBadge {
-  background-color: #d8b4fe;
-  color: #1a1620;
-  font-weight: 800;
-  font-size: 0.8rem;
-  padding: 4px 10px;
-  border-radius: 99px;
+/* Responsividade */
+@media (max-width: 1100px) {
+  .pageContainer {
+    padding-right: 20px;
+  }
+  
+  .topSection {
+    flex-direction: column; /* Empilha vídeo e lista */
+    height: auto;
+    align-items: normal; /* Remove o stretch para altura natural */
+  }
+  
+  .playerWrapper {
+    width: 100%;
+    /* Aspect ratio continua mandando na altura */
+  }
+  
+  .sidebarWrapper {
+    width: 100%; /* Lista ocupa largura total embaixo do vídeo */
+    height: 500px; /* Altura fixa para permitir scroll interno */
+  }
 }
 
-.modulesList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-/* Módulos */
-.moduleItem {
-  background-color: #131116; 
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid transparent; /* Sem borda por padrão */
-}
-
-.moduleHeader {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-}
-.moduleHeader:hover { background-color: rgba(255,255,255,0.02); }
-
-.moduleTitle {
+.videoLoading {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    background-color: #000; /* Fundo preto igual ao player */
+    color: #fff;
+    gap: 16px;
+    z-index: 20;
 }
 
-.modLabel {
-    font-size: 0.65rem;
-    color: #d8b4fe; /* Roxo claro */
-    text-transform: uppercase;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+.videoLoading p {
+    font-size: 0.9rem;
+    color: #888;
+    animation: pulseText 1.5s infinite;
 }
 
-.moduleTitle strong {
-  font-size: 0.95rem;
-  color: #fff;
-  font-weight: 600;
+@keyframes pulseText {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
 }
-
-.lessonsContainer {
-  display: flex;
-  flex-direction: column;
-  padding: 0 8px 8px 8px;
-}
-
-.lessonItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: #888;
-}
-
-.lessonItem:hover {
-  background-color: rgba(255,255,255,0.03);
-  color: #ccc;
-}
-
-/* Item Ativo (Roxo igual ao print) */
-.lessonItem.active {
-  background-color: rgba(145, 91, 245, 0.15); 
-  border: 1px solid rgba(145, 91, 245, 0.2);
-  color: #fff;
-}
-
-.lessonIcon { width: 20px; display: flex; justify-content: center; }
-
-.lessonMeta { display: flex; flex-direction: column; }
-.lessonName { font-size: 0.9rem; font-weight: 500; }
-.lessonDuration { font-size: 0.75rem; opacity: 0.6; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

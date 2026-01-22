@@ -1,28 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
-import { 
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp 
-} from "firebase/firestore";
-import { X, Plus, Trash2, CheckCircle, Save, AlertCircle } from "lucide-react";
+import { db } from "@/lib/firebase"; // Apenas para leitura (GET)
+import { collection, getDocs } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import { X, Plus, Trash2, CheckCircle, Save, AlertCircle, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import styles from "./styles.module.css";
 
-// Tipos
-type Option = {
-  id: string;
-  text: string;
-  isCorrect: boolean;
-};
+// Import das Actions Seguras
+import { upsertQuestionAction, deleteQuestionAction } from "@/app/actions/admin/quizManagementActions";
 
-type Question = {
-  id?: string;
-  text: string;
-  options: Option[];
-  createdAt?: any;
-};
+// Tipos
+type Option = { id: string; text: string; isCorrect: boolean };
+type Question = { id?: string; text: string; options: Option[]; order: number };
 
 interface QuizEditorProps {
   courseId: string;
@@ -32,38 +25,44 @@ interface QuizEditorProps {
 }
 
 export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }: QuizEditorProps) {
+  const { user } = useAuth();
+  const { addToast } = useToast();
+  
+  // Refs
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Estados
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estado do Formulário Atual
-  const [editingId, setEditingId] = useState<string | null>(null); // Se null, é modo criação
+  const [saving, setSaving] = useState(false);
+
+  // Estado do Formulário
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [qText, setQText] = useState("");
   const [options, setOptions] = useState<Option[]>([
     { id: '1', text: '', isCorrect: false },
     { id: '2', text: '', isCorrect: false }
   ]);
 
-  // --- 1. Carregar Perguntas ---
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const ref = collection(db, "courses", courseId, "modules", moduleId, "questions");
-        const snap = await getDocs(ref);
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Question));
-        setQuestions(list);
-      } catch (error) {
-        console.error("Erro ao buscar perguntas:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchQuestions();
-  }, [courseId, moduleId]);
+  // --- 1. Carregar Perguntas (Leitura ainda pode ser Client-Side para agilidade, ou via Action) ---
+  const fetchQuestions = async () => {
+    try {
+      const ref = collection(db, "courses", courseId, "modules", moduleId, "questions");
+      const snap = await getDocs(ref);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Question));
+      // Ordenação local simples se não tiver order
+      setQuestions(list);
+    } catch (error) {
+      console.error("Erro ao buscar:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // --- 2. Animação de Entrada (GSAP) ---
+  useEffect(() => { fetchQuestions(); }, [courseId, moduleId]);
+
+  // --- 2. Animação ---
   useGSAP(() => {
     gsap.fromTo(modalRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
     gsap.fromTo(contentRef.current, 
@@ -72,8 +71,7 @@ export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }:
     );
   }, []);
 
-  // --- 3. Lógica do Formulário ---
-  
+  // --- 3. Handlers do Formulário ---
   const handleAddOption = () => {
     setOptions([...options, { id: Date.now().toString(), text: '', isCorrect: false }]);
   };
@@ -87,39 +85,17 @@ export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }:
   };
 
   const handleRemoveOption = (id: string) => {
-    if (options.length <= 2) return alert("Mínimo de 2 opções.");
+    if (options.length <= 2) return addToast("Mínimo 2 opções.", "warning");
     setOptions(options.filter(opt => opt.id !== id));
   };
 
-  const handleSaveQuestion = async () => {
-    if (!qText.trim()) return alert("Digite a pergunta.");
-    if (options.some(o => !o.text.trim())) return alert("Preencha todas as opções.");
-    if (!options.some(o => o.isCorrect)) return alert("Selecione a resposta correta.");
-
-    const questionData = {
-      text: qText,
-      options,
-      updatedAt: serverTimestamp()
-    };
-
-    try {
-      if (editingId) {
-        // Editar
-        await updateDoc(doc(db, "courses", courseId, "modules", moduleId, "questions", editingId), questionData);
-        setQuestions(questions.map(q => q.id === editingId ? { ...questionData, id: editingId } : q));
-      } else {
-        // Criar
-        const docRef = await addDoc(collection(db, "courses", courseId, "modules", moduleId, "questions"), {
-            ...questionData,
-            createdAt: serverTimestamp()
-        });
-        setQuestions([...questions, { ...questionData, id: docRef.id }]);
-      }
-      resetForm();
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao salvar.");
-    }
+  const resetForm = () => {
+    setEditingId(null);
+    setQText("");
+    setOptions([
+        { id: Date.now() + '1', text: '', isCorrect: false },
+        { id: Date.now() + '2', text: '', isCorrect: false }
+    ]);
   };
 
   const handleEditClick = (q: Question) => {
@@ -128,22 +104,49 @@ export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }:
     setOptions(q.options);
   };
 
-  const handleDeleteClick = async (id: string) => {
-    if(!confirm("Deletar pergunta?")) return;
+  // --- 4. Ações via Server Action ---
+  const handleSaveQuestion = async () => {
+    if (!qText.trim()) return addToast("Enunciado vazio.", "warning");
+    if (options.some(o => !o.text.trim())) return addToast("Preencha todas opções.", "warning");
+    if (!options.some(o => o.isCorrect)) return addToast("Marque a correta.", "warning");
+    if (!user) return;
+
+    setSaving(true);
     try {
-      await deleteDoc(doc(db, "courses", courseId, "modules", moduleId, "questions", id));
-      setQuestions(questions.filter(q => q.id !== id));
-      if (editingId === id) resetForm();
-    } catch (err) { console.error(err); }
+        const token = await user.getIdToken();
+        const payload = { 
+            text: qText, 
+            options, 
+            order: questions.length // Simples ordem incremental
+        };
+
+        const res = await upsertQuestionAction(token, courseId, moduleId, editingId, payload);
+
+        if (res.success) {
+            addToast(editingId ? "Questão atualizada!" : "Questão criada!", "success");
+            resetForm();
+            fetchQuestions(); // Recarrega lista
+        } else {
+            addToast(res.message || "Erro ao salvar.", "error");
+        }
+    } catch (err) {
+        console.error(err);
+        addToast("Erro de conexão.", "error");
+    } finally {
+        setSaving(false);
+    }
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setQText("");
-    setOptions([
-        { id: Date.now().toString() + '1', text: '', isCorrect: false },
-        { id: Date.now().toString() + '2', text: '', isCorrect: false }
-    ]);
+  const handleDeleteClick = async (id: string) => {
+    if (!confirm("Deletar pergunta?") || !user) return;
+    try {
+        const token = await user.getIdToken();
+        await deleteQuestionAction(token, courseId, moduleId, id);
+        setQuestions(prev => prev.filter(q => q.id !== id));
+        if (editingId === id) resetForm();
+    } catch (err) {
+        addToast("Erro ao deletar.", "error");
+    }
   };
 
   return (
@@ -154,24 +157,24 @@ export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }:
         <div className={styles.header}>
             <div>
                 <h2>Gerenciar Prova</h2>
-                <p className={styles.subtitle}>Módulo: {moduleTitle}</p>
+                <p className={styles.subtitle}>{moduleTitle}</p>
             </div>
             <button onClick={onClose} className={styles.closeBtn}><X size={24} /></button>
         </div>
 
         <div className={styles.body}>
             
-            {/* COLUNA ESQUERDA: LISTA */}
+            {/* ESQUERDA: LISTA */}
             <div className={styles.listColumn}>
                 <div className={styles.listHeader}>
                     <span>{questions.length} Questões</span>
-                    <button onClick={resetForm} className={styles.newBtn}>
+                    <button onClick={resetForm} className={styles.newBtn} disabled={saving}>
                         <Plus size={16}/> Nova
                     </button>
                 </div>
                 
                 <div className={styles.questionsList}>
-                    {loading ? <p className={styles.loading}>Carregando...</p> : questions.map((q, i) => (
+                    {loading ? <div className={styles.loading}>Carregando...</div> : questions.map((q, i) => (
                         <div 
                             key={q.id} 
                             className={`${styles.questionItem} ${editingId === q.id ? styles.activeItem : ''}`}
@@ -196,54 +199,52 @@ export default function QuizEditor({ courseId, moduleId, moduleTitle, onClose }:
                 </div>
             </div>
 
-            {/* COLUNA DIREITA: EDITOR */}
+            {/* DIREITA: EDITOR */}
             <div className={styles.editorColumn}>
                 <h3 className={styles.editorTitle}>
-                    {editingId ? "Editar Pergunta" : "Criar Nova Pergunta"}
+                    {editingId ? "Editar Pergunta" : "Nova Pergunta"}
                 </h3>
 
                 <div className={styles.fieldGroup}>
-                    <label>Enunciado da Pergunta</label>
+                    <label>Enunciado</label>
                     <textarea 
-                        value={qText} 
-                        onChange={e => setQText(e.target.value)}
-                        placeholder="Ex: Qual o material mais utilizado em..."
-                        rows={3}
+                        value={qText} onChange={e => setQText(e.target.value)}
+                        placeholder="Ex: Qual o material..." rows={3} disabled={saving}
                     />
                 </div>
 
                 <div className={styles.fieldGroup}>
-                    <label>Opções de Resposta (Marque a correta)</label>
+                    <label>Opções (Clique no círculo para marcar a correta)</label>
                     <div className={styles.optionsList}>
                         {options.map((opt, idx) => (
                             <div key={opt.id} className={`${styles.optionRow} ${opt.isCorrect ? styles.correctRow : ''}`}>
                                 <button 
                                     className={`${styles.checkBtn} ${opt.isCorrect ? styles.checked : ''}`}
                                     onClick={() => handleSetCorrect(opt.id)}
-                                    title="Marcar como correta"
+                                    disabled={saving}
                                 >
                                     <CheckCircle size={18} />
                                 </button>
                                 <input 
-                                    type="text" 
-                                    value={opt.text}
+                                    type="text" value={opt.text}
                                     onChange={(e) => handleOptionChange(opt.id, e.target.value)}
                                     placeholder={`Opção ${idx + 1}`}
+                                    disabled={saving}
                                 />
-                                <button onClick={() => handleRemoveOption(opt.id)} className={styles.removeOptBtn}>
+                                <button onClick={() => handleRemoveOption(opt.id)} className={styles.removeOptBtn} disabled={saving}>
                                     <X size={16}/>
                                 </button>
                             </div>
                         ))}
                     </div>
-                    <button onClick={handleAddOption} className={styles.addOptBtn}>
+                    <button onClick={handleAddOption} className={styles.addOptBtn} disabled={saving}>
                         <Plus size={14}/> Adicionar Opção
                     </button>
                 </div>
 
                 <div className={styles.editorFooter}>
-                    <button onClick={handleSaveQuestion} className={styles.saveBtn}>
-                        <Save size={18} /> Salvar Pergunta
+                    <button onClick={handleSaveQuestion} className={styles.saveBtn} disabled={saving}>
+                        {saving ? <><Loader2 className={styles.spin} size={18}/> Salvando...</> : <><Save size={18} /> Salvar</>}
                     </button>
                 </div>
             </div>

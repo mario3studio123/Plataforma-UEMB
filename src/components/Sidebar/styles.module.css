@@ -1,18 +1,24 @@
 .sidebarContainer {
-  position: absolute;
-  left: 20px; /* Ajuste fino para não colar na borda da tela se quiser */
-  top: 24px;
-  bottom: 24px;
+  position: fixed; /* Fixa na tela, não rola junto */
+  left: 30px;
+  top: 0;
+  bottom: 0;
   z-index: 50;
+  
+  /* A LARGURA AGORA VEM DA VARIÁVEL! */
+  width: var(--sidebar-current-width);
+
+  transition: width var(--layout-transition);
+  
+  padding: 60px 0 60px 30px;
   display: flex;
   flex-direction: column;
-  /* Largura é controlada via inline style/GSAP, removemos daqui se tiver fixa */
 }
 
 .glassContent {
   width: 100%;
   height: 100%;
-  background: rgba(22, 20, 23,0.4); /* Vidro escuro */
+  background: rgba(22, 20, 23, 0.4);
   backdrop-filter: blur(24px);        
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 40px;
@@ -21,26 +27,16 @@
   overflow: hidden;
 }
 
-/* --- HEADER --- */
+
 .header {
-  padding: 0 2rem; /* Padding horizontal ajustado */
-  height: 90px;    /* Altura fixa para manter consistência */
+  position: relative;
+  padding: 0 2rem;
+  height: 90px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 2rem;
+  justify-content: flex-start;
+  margin-top: 1rem;
   margin-bottom: 1rem;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.headerCollapsed {
-  padding: 0; /* Remove padding lateral no modo colapsado */
-  justify-content: center; /* Centraliza verticalmente os itens */
-  flex-direction: column;  /* Empilha Logo e Botão */
-  gap: 30px;               /* Espaço entre logo e botão */
-  height: auto;
-  margin-top: 3rem;        /* Mais espaço no topo */
 }
 
 .logoArea {
@@ -49,23 +45,19 @@
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-start; /* Expandido: alinha a esquerda */
-}
-
-.headerCollapsed .logoArea {
-  justify-content: center; /* Colapsado: alinha ao centro */
-  width: 40px; /* Força largura fixa para centralizar */
 }
 
 /* Logo Full */
 .logoFullWrapper {
   width: 100%;
+  transform-origin: left center;
 }
 .logoImgFull {
   height: 44px;
   object-fit: contain;
 }
 
+/* Logo Icon (Inicialmente escondido via CSS para evitar FOUC, GSAP controla) */
 .logoIconWrapper {
   position: absolute;
   left: 50%;
@@ -73,18 +65,22 @@
   transform: translate(-50%, -50%);
   width: 40px;
   height: 40px;
-  display: flex;
+  display: none; /* GSAP vai dar display: flex */
   align-items: center;
   justify-content: center;
+  opacity: 0;
 }
 
 .logoImgIcon {
   width: 40px;
-
 }
 
 /* Botão Toggle */
 .toggleBtn {
+  position: absolute;
+  right: 20px; /* Posição inicial (Expandida) */
+  top: 50%;
+  transform: translateY(-50%); /* Centraliza verticalmente */
   background: transparent;
   width: 32px;
   height: 32px;
@@ -93,7 +89,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border 0.2s; /* Apenas cores, posição é GSAP */
   z-index: 10;
 }
 
@@ -102,15 +98,11 @@
   border-color: #915bf5;
 }
 
-.headerCollapsed .toggleBtn {
-  width: 40px;
-  height: 40px;
-}
-
 /* --- NAV --- */
 .navContainer {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 16px;
   display: flex;
   flex-direction: column;
@@ -125,31 +117,22 @@
 .link {
   display: flex;
   align-items: center;
-  padding: 14px 20px; /* Padding lateral fixo quando aberto */
+  padding: 14px 20px;
   border-radius: 18px;
   color: #fff;
   transition: background 0.2s;
   position: relative;
-  height: 54px; /* Altura fixa ajuda no alinhamento */
-  white-space: nowrap; /* Impede quebra de linha */
-}
-
-.linkCollapsed {
-  padding: 0; /* Remove padding interno */
-  justify-content: center; /* Centraliza o ícone */
-  width: 54px; /* Largura = Altura para ficar quadrado/circular */
-  margin: 0 auto; /* Centraliza o link dentro da sidebar */
+  height: 54px;
+  white-space: nowrap;
 }
 
 .link:hover {
   background-color: rgba(104, 79, 151, 0.1);
 }
 
-/* Item Ativo */
 .link.active {
   background: linear-gradient(90deg, rgb(22, 20, 23) 0%, rgba(104, 79, 151, 0.5) 100%);
   color: #fff;
-
 }
 
 .iconWrapper {
@@ -158,19 +141,14 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  flex-shrink: 0; /* IMPEDE O ÍCONE DE AMASSAR */
-}
-
-.link:hover .iconWrapper {
-  transform: scale(1.1);
+  flex-shrink: 0; /* Ícone nunca encolhe */
 }
 
 .linkLabel {
   margin-left: 16px;
   font-size: 0.95rem;
   font-weight: 300;
-  /* O GSAP vai controlar width e opacity */
-  overflow: hidden; /* Importante para a animação de width funcionar */
+  display: block;
 }
 
 .divider {
@@ -182,24 +160,18 @@
 /* --- FOOTER --- */
 .footer {
   padding: 24px;
-  /* background: rgba(0,0,0,0.2); Removido para ficar mais clean igual a foto */
 }
 
 .profileCard {
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* gap: 12px; removido gap fixo para controle manual no JS */
   background-color: rgba(255,255,255,0.03);
   padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.05);
-}
-
-.profileCardCollapsed {
-  padding: 0;
-  justify-content: center;
-  background: transparent;
-  border: none;
+  overflow: hidden; /* Garante que info não vaze */
+  justify-content: center; /* Centraliza avatar quando encolhido */
 }
 
 .avatar {
@@ -209,7 +181,7 @@
   background-color: #2d2833;
   overflow: hidden;
   flex-shrink: 0;
-  border: 2px solid #CA8DFF; /* Borda roxa no avatar */
+  border: 2px solid #CA8DFF;
 }
 
 .avatar img {
@@ -228,12 +200,19 @@
   font-weight: bold;
 }
 
+.profileDetails {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    margin-left: 12px;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
 .profileInfo {
-  flex: 1;
   display: flex;
   flex-direction: column;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .userName {
@@ -261,5 +240,5 @@
 }
 
 .logoutBtn:hover {
-  background-color: rgba(202, 141, 255,0.1);
+  background-color: rgba(202, 141, 255, 0.1);
 }

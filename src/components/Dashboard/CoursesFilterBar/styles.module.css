@@ -1,0 +1,75 @@
+.barContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.searchWrapper {
+    position: relative;
+    flex: 1;
+    min-width: 300px;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+.searchInput {
+    width: 100%;
+    background-color: #1a1620;
+    border: 1px solid #2d2833;
+    padding: 14px 14px 14px 48px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.searchInput:focus {
+    border-color: #915bf5;
+    box-shadow: 0 0 0 4px rgba(145, 91, 245, 0.1);
+}
+
+.filtersWrapper {
+    display: flex;
+    gap: 8px;
+}
+
+.filterPill {
+    background: transparent;
+    border: 1px solid #2d2833;
+    color: #888;
+    padding: 8px 16px;
+    border-radius: 99px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.filterPill:hover {
+    border-color: #666;
+    color: #fff;
+}
+
+.filterPill.active {
+    background-color: #915bf5;
+    border-color: #915bf5;
+    color: #fff;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    color: var(--primary, #CA8DFF); /* Roxo quando carregando */
+}
+
+@keyframes spin { 
+    100% { transform: translateY(-50%) rotate(360deg); } 
+}

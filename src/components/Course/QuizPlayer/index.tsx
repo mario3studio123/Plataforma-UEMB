@@ -1,237 +1,275 @@
+// src/components/Course/QuizPlayer/index.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Check, X, AlertCircle, Trophy, ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowRight, Check, X, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useToast } from "@/context/ToastContext";
 import styles from "./styles.module.css";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
+import { getQuizQuestionsAction, submitQuizAction } from "@/app/actions/quizActions";
+import LevelUpOverlay from "@/components/Game/LevelUpOverlay"; // <--- O Componente Cinematográfico
 
-// Tipos (Podemos mover para types/index.ts depois)
-type Option = { id: string; text: string; isCorrect: boolean };
-type Question = { id: string; text: string; options: Option[] };
+// Tipos
+type OptionSanitized = { id: string; text: string };
+type QuestionSanitized = { id: string; text: string; options: OptionSanitized[] };
 
 interface QuizPlayerProps {
   courseId: string;
   moduleId: string;
-  onPass: (xpEarned: number) => void; // Função chamada ao passar
+  onPass: (xpEarned: number) => void;
   onClose: () => void;
 }
 
 export default function QuizPlayer({ courseId, moduleId, onPass, onClose }: QuizPlayerProps) {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { addToast } = useToast();
   
-  // Estado visual
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isAnswerChecked, setIsAnswerChecked] = useState(false);
-
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const questionCardRef = useRef<HTMLDivElement>(null);
-  const feedbackRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // 1. Carregar Perguntas
+  // Estados de Dados
+  const [questions, setQuestions] = useState<QuestionSanitized[]>([]);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  
+  // Estados de Controle
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Estado de Resultado (Rico em dados para a animação)
+  const [result, setResult] = useState<{ 
+      passed: boolean; 
+      score: number; 
+      xpEarned: number;
+      // Dados para o Overlay
+      oldXp: number;
+      newXp: number;
+      oldLevel: number;
+      newLevel: number;
+      leveledUp: boolean;
+  } | null>(null);
+
+  // --- 1. Inicialização: Busca Perguntas ---
   useEffect(() => {
     const loadQuestions = async () => {
-      try {
-        const ref = collection(db, "courses", courseId, "modules", moduleId, "questions");
-        const snap = await getDocs(ref);
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Question));
-        // Embaralhar perguntas aleatoriamente para dificultar cola? Opcional.
-        setQuestions(list);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+      const res = await getQuizQuestionsAction(courseId, moduleId);
+      if (res.success && res.data && res.data.length > 0) {
+        setQuestions(res.data);
+      } else {
+        addToast(res.message || "Erro ao carregar prova.", "error");
+        onClose();
       }
+      setLoading(false);
     };
     loadQuestions();
-  }, [courseId, moduleId]);
+  }, [courseId, moduleId, addToast, onClose]);
 
-  // Animação de Entrada
+  // --- 2. Animação de Entrada do Card (GSAP) ---
   useGSAP(() => {
-    gsap.fromTo(containerRef.current, { opacity: 0 }, { opacity: 1, duration: 0.5 });
-    if (!loading && questions.length > 0) {
-      animateQuestionEntry();
+    if (!loading && questions.length > 0 && cardRef.current && !result) {
+      gsap.fromTo(cardRef.current,
+        { y: 40, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.4)" }
+      );
     }
-  }, [loading]);
+  }, [loading, currentQIndex, result]);
 
-  const animateQuestionEntry = () => {
-    gsap.fromTo(questionCardRef.current, 
-      { x: 50, opacity: 0, scale: 0.95 }, 
-      { x: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.2)" }
-    );
-  };
-
+  // --- 3. Lógica de Navegação e Seleção ---
   const handleSelectOption = (optId: string) => {
-    if (isAnswerChecked) return;
-    setSelectedOption(optId);
-  };
-
-  const handleCheckAnswer = () => {
-    if (!selectedOption) return;
-    setIsAnswerChecked(true);
-
     const currentQ = questions[currentQIndex];
-    const isCorrect = currentQ.options.find(o => o.id === selectedOption)?.isCorrect;
-
-    if (isCorrect) setScore(prev => prev + 1);
-
-    // Animação de Feedback
-    gsap.fromTo(feedbackRef.current, 
-      { y: 20, opacity: 0 }, 
-      { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" }
-    );
+    setUserAnswers(prev => ({ ...prev, [currentQ.id]: optId }));
   };
 
   const handleNext = () => {
-    // Resetar estados
-    setIsAnswerChecked(false);
-    setSelectedOption(null);
+    const isLast = currentQIndex === questions.length - 1;
     
-    // Animação de Saída da pergunta atual
-    gsap.to(questionCardRef.current, {
-      x: -50, opacity: 0, duration: 0.3, 
+    // Animação de Saída (Slide Left)
+    gsap.to(cardRef.current, {
+      x: -50, opacity: 0, duration: 0.3, ease: "power2.in",
       onComplete: () => {
-        if (currentQIndex + 1 < questions.length) {
+        if (!isLast) {
           setCurrentQIndex(prev => prev + 1);
-          animateQuestionEntry(); // Re-anima entrada
+          // Prepara a entrada da próxima (Slide In from Right)
+          gsap.set(cardRef.current, { x: 50 }); 
         } else {
-          setShowResult(true);
+          handleSubmit();
         }
       }
     });
   };
 
-  const calculateFinalResult = () => {
-    const percentage = (score / questions.length) * 100;
-    const passed = percentage >= 70; // 70% para passar
-    const xpReward = passed ? questions.length * 20 + 100 : 0; // Ex: 20xp por pergunta + 100 bonus
+  const handleSubmit = async () => {
+    if (!user) return;
+    setSubmitting(true);
 
-    return { percentage, passed, xpReward };
+    try {
+      const token = await user.getIdToken();
+      // Chama a Server Action Atualizada
+      const response = await submitQuizAction(token, courseId, moduleId, userAnswers);
+      
+      if (response.success) {
+        // Popula o estado com TODOS os dados necessários para o Overlay
+        setResult({
+          passed: response.passed || false,
+          score: response.scorePercent || 0,
+          xpEarned: response.xpEarned || 0,
+          
+          // Dados estatísticos vindos do backend
+          oldXp: response.stats?.oldXp || 0,
+          newXp: response.stats?.newXp || 0,
+          oldLevel: response.stats?.oldLevel || 1,
+          newLevel: response.stats?.newLevel || 1,
+          leveledUp: response.stats?.leveledUp || false
+        });
+        
+        // Notifica o componente pai (Sidebar) se passou
+        if(response.passed) {
+            onPass(response.xpEarned || 0);
+        }
+      } else {
+        addToast(response.message || "Erro ao corrigir.", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      addToast("Erro de conexão ao enviar prova.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (loading) return <div className={styles.loading}>Carregando prova...</div>;
+  // --- 4. Atalhos de Teclado ---
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (loading || result || submitting) return;
+      
+      const currentQ = questions[currentQIndex];
+      if(!currentQ) return;
 
-  if (questions.length === 0) return (
-    <div className={styles.container}>
-      <div className={styles.resultCard}>
-        <AlertCircle size={48} color="#888" />
-        <h2>Nenhuma pergunta cadastrada.</h2>
-        <button onClick={onClose} className={styles.btnSecondary}>Voltar</button>
-      </div>
-    </div>
-  );
+      // Seleção Numérica (1, 2, 3...)
+      const num = parseInt(e.key);
+      if (!isNaN(num) && num > 0 && num <= currentQ.options.length) {
+        handleSelectOption(currentQ.options[num - 1].id);
+      }
+      
+      // Enter para Avançar
+      if (e.key === "Enter" && userAnswers[currentQ.id]) {
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [questions, currentQIndex, userAnswers, loading, result, submitting]);
 
-  // TELA DE RESULTADO
-  if (showResult) {
-    const { percentage, passed, xpReward } = calculateFinalResult();
-    
+
+  // --- RENDERIZAÇÃO ---
+
+  // 1. Loading
+  if (loading) {
     return (
       <div className={styles.container}>
-        <div className={styles.resultCard}>
-          {passed ? (
-            <>
-              <div className={styles.trophyIcon}><Trophy size={64} /></div>
-              <h1>Parabéns!</h1>
-              <p>Você acertou {percentage.toFixed(0)}% da prova.</p>
-              <div className={styles.xpGained}>+{xpReward} XP</div>
-              <button onClick={() => onPass(xpReward)} className={styles.btnPrimary}>
-                Resgatar Recompensa & Continuar
-              </button>
-            </>
-          ) : (
-            <>
-              <div className={styles.failIcon}><X size={64} /></div>
-              <h1>Não foi dessa vez...</h1>
-              <p>Você precisa de 70% para passar. Você fez {percentage.toFixed(0)}%.</p>
-              <button onClick={() => {
-                // Reiniciar
-                setScore(0); setCurrentQIndex(0); setShowResult(false); setIsAnswerChecked(false); animateQuestionEntry();
-              }} className={styles.btnSecondary}>
-                <RotateCcw size={18} /> Tentar Novamente
-              </button>
-              <button onClick={onClose} className={styles.btnLink}>Sair por enquanto</button>
-            </>
-          )}
+        <div className={styles.loadingWrapper}>
+          <Loader2 size={48} className={styles.spin} color="#915bf5"/>
+          <p>Preparando desafio...</p>
         </div>
       </div>
     );
   }
 
-  // TELA DA PERGUNTA
+  // 2. Resultado (OVERLAY CINEMATOGRÁFICO)
+  if (result) {
+    return (
+      <LevelUpOverlay 
+        data={result} 
+        onClose={() => {
+            if (result.passed) {
+                onClose(); // Fecha o player e volta pro curso
+            } else {
+                // Reinicia para tentar de novo
+                setResult(null); 
+                setCurrentQIndex(0); 
+                setUserAnswers({}); 
+            }
+        }} 
+      />
+    );
+  }
+
+  // 3. Quiz Interface
   const currentQ = questions[currentQIndex];
+  const selectedOptId = userAnswers[currentQ.id];
+  const isLast = currentQIndex === questions.length - 1;
+  const shortcuts = ['A', 'B', 'C', 'D', 'E', 'F']; // Visual helper
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <div className={styles.progressBar}>
-        <div 
-          className={styles.progressFill} 
-          style={{ width: `${((currentQIndex + 1) / questions.length) * 100}%` }} 
-        />
+      
+      {/* Botão Fechar (Sair) */}
+      <button onClick={onClose} className={styles.closeBtn} title="Sair da prova"><X size={20}/></button>
+
+      {/* Barra de Progresso Segmentada */}
+      <div className={styles.progressHeader}>
+        {questions.map((_, idx) => (
+          <div key={idx} className={`${styles.segment} ${idx < currentQIndex ? styles.completed : idx === currentQIndex ? styles.active : ''}`}>
+            <div className={styles.segmentFill} />
+          </div>
+        ))}
       </div>
 
-      <div className={styles.quizContent} ref={questionCardRef}>
+      {/* Card da Pergunta */}
+      <div className={styles.quizCard} ref={cardRef}>
+        
+        {/* Enunciado */}
         <div className={styles.questionHeader}>
-          <span className={styles.qCount}>Questão {currentQIndex + 1} de {questions.length}</span>
-          <h2 className={styles.qText}>{currentQ.text}</h2>
+          <div className={styles.labelWrapper}>
+            <span className={styles.questionLabel}>QUESTÃO {currentQIndex + 1}</span>
+            <span className={styles.difficultyBadge}>Valendo pontos</span>
+          </div>
+          <h2 className={styles.questionText}>{currentQ.text}</h2>
         </div>
 
+        {/* Opções */}
         <div className={styles.optionsGrid}>
-          {currentQ.options.map((opt) => {
-            let statusClass = "";
-            if (isAnswerChecked) {
-              if (opt.isCorrect) statusClass = styles.correct;
-              else if (selectedOption === opt.id) statusClass = styles.wrong;
-              else statusClass = styles.dimmed;
-            } else if (selectedOption === opt.id) {
-              statusClass = styles.selected;
-            }
-
+          {currentQ.options.map((opt, idx) => {
+            const isSelected = selectedOptId === opt.id;
             return (
               <button
                 key={opt.id}
                 onClick={() => handleSelectOption(opt.id)}
-                className={`${styles.optionBtn} ${statusClass}`}
-                disabled={isAnswerChecked}
+                className={`${styles.optionCard} ${isSelected ? styles.selected : ''}`}
+                disabled={submitting}
               >
-                <div className={styles.optLetter}>{opt.id.slice(-1)}</div> {/* Apenas visual */}
-                <span className={styles.optText}>{opt.text}</span>
-                {isAnswerChecked && opt.isCorrect && <Check size={20} className={styles.iconCorrect}/>}
-                {isAnswerChecked && !opt.isCorrect && selectedOption === opt.id && <X size={20} className={styles.iconWrong}/>}
+                <div className={styles.keyHint}>
+                  {shortcuts[idx] || idx + 1}
+                </div>
+                
+                <span className={styles.optionText}>{opt.text}</span>
+                
+                <div className={styles.radioIndicator} />
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* RODAPÉ DE AÇÃO */}
-      <div className={styles.footerAction} ref={feedbackRef}>
-        {!isAnswerChecked ? (
+        {/* Footer de Ação */}
+        <div className={styles.footer}>
           <button 
-            className={styles.btnConfirm} 
-            onClick={handleCheckAnswer}
-            disabled={!selectedOption}
+            className={styles.nextBtn} 
+            onClick={handleNext}
+            disabled={!selectedOptId || submitting}
           >
-            Confirmar Resposta
+            {submitting ? (
+               <><Loader2 className={styles.spin} size={18}/> Processando...</>
+            ) : isLast ? (
+               <>Finalizar Prova <Check size={18} /></>
+            ) : (
+               <>Próxima <ArrowRight size={18} /></>
+            )}
           </button>
-        ) : (
-          <div className={styles.feedbackArea}>
-            <span className={styles.feedbackText}>
-               {currentQ.options.find(o => o.id === selectedOption)?.isCorrect 
-                 ? "Resposta Correta! 🎉" 
-                 : "Ops! Resposta errada."}
-            </span>
-            <button className={styles.btnNext} onClick={handleNext}>
-              Próxima <ArrowRight size={20} />
-            </button>
-          </div>
-        )}
+        </div>
+
       </div>
     </div>
   );
