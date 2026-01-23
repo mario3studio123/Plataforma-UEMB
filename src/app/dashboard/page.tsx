@@ -1,17 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import styles from "./layout.module.css"; // Note que estamos usando o CSS do module layout aqui para a page
+import styles from "./layout.module.css";
 import { useSidebar } from "@/context/SidebarContext";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-
-// Componentes
 import HeroSection from "@/components/Dashboard/HeroSection";
 import CoursesCarousel from "@/components/Dashboard/CoursesCarousel";
-import TopBar from "@/components/TopBar"; // <--- 1. Importar aqui
-
-// Hook de Dados
+import TopBar from "@/components/TopBar";
 import { useDashboardData } from "@/hooks/useDashboardData";
 
 gsap.registerPlugin(useGSAP);
@@ -19,7 +15,6 @@ gsap.registerPlugin(useGSAP);
 export default function DashboardHome() {
   const { isExpanded } = useSidebar();
   
-  // 1. Busca Dados
   const { featured, courses, lastActiveCourse, loading } = useDashboardData();
 
   const heroData = lastActiveCourse ? lastActiveCourse.course : featured;
@@ -40,7 +35,7 @@ export default function DashboardHome() {
   return (
     <div className={styles.container} ref={containerRef}>
       
-      {/* 2. ADICIONAR AQUI - Posição Absoluta para flutuar sobre o Hero */}
+
       <div className={styles.topBarWrapper}>
          <TopBar />
       </div>

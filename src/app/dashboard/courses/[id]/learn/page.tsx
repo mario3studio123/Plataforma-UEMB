@@ -214,7 +214,7 @@ export default function CoursePlayerPage() {
                <div className={styles.titleGroup}>
                   <h1 className={styles.lessonTitle}>{activeLesson.title}</h1>
                   <div className={styles.badges}>
-                      <span className={styles.badge}>
+                      <span className={styles.badge}> 
                         {typeof activeLesson.duration === 'number' 
                             ? formatDuration(activeLesson.duration) 
                             : activeLesson.duration || "00:00"}
