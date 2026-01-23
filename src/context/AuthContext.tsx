@@ -1,7 +1,7 @@
 // src/context/AuthContext.tsx
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { 
   onAuthStateChanged, 
   User, 
@@ -20,6 +20,37 @@ import { useRouter, usePathname } from "next/navigation";
 import { UserProfile } from "@/types";
 import { useToast } from "@/context/ToastContext";
 
+/**
+ * ============================================================================
+ * GERENCIAMENTO DE COOKIES DE SESSÃO
+ * ============================================================================
+ */
+
+const AUTH_COOKIE_NAME = 'auth-token';
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias em segundos
+
+/**
+ * Seta o cookie de autenticação
+ * Usado pelo middleware para verificar se o usuário está logado
+ */
+function setAuthCookie(token: string): void {
+  // Cookie seguro com flags apropriadas
+  document.cookie = `${AUTH_COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax; ${window.location.protocol === 'https:' ? 'Secure;' : ''}`;
+}
+
+/**
+ * Remove o cookie de autenticação
+ */
+function removeAuthCookie(): void {
+  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax;`;
+}
+
+/**
+ * ============================================================================
+ * TIPOS E CONTEXTO
+ * ============================================================================
+ */
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -29,11 +60,14 @@ interface AuthContextType {
   register: (name: string, email: string, pass: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// Helper para mensagens de erro amigáveis
+/**
+ * Helper para mensagens de erro amigáveis
+ */
 const getErrorMessage = (error: AuthError) => {
   switch (error.code) {
     case 'auth/invalid-credential':
@@ -46,10 +80,18 @@ const getErrorMessage = (error: AuthError) => {
       return "Muitas tentativas. Tente novamente mais tarde.";
     case 'auth/popup-closed-by-user':
       return "Login cancelado.";
+    case 'auth/network-request-failed':
+      return "Erro de conexão. Verifique sua internet.";
     default:
       return "Ocorreu um erro inesperado. Tente novamente.";
   }
 };
+
+/**
+ * ============================================================================
+ * PROVIDER
+ * ============================================================================
+ */
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -60,19 +102,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { addToast } = useToast();
 
-  // Função auxiliar para criar perfil padrão se não existir
-  const ensureUserProfile = async (firebaseUser: User, name?: string) => {
+  /**
+   * Atualiza o cookie com o token atual
+   */
+  const updateAuthCookie = useCallback(async (firebaseUser: User | null) => {
+    if (firebaseUser) {
+      try {
+        const token = await firebaseUser.getIdToken();
+        setAuthCookie(token);
+      } catch (error) {
+        console.error('Erro ao obter token:', error);
+        removeAuthCookie();
+      }
+    } else {
+      removeAuthCookie();
+    }
+  }, []);
+
+  /**
+   * Função para refresh manual do token (expõe para uso externo)
+   */
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    if (!user) return null;
+    
+    try {
+      const token = await user.getIdToken(true); // force refresh
+      setAuthCookie(token);
+      return token;
+    } catch (error) {
+      console.error('Erro ao renovar token:', error);
+      return null;
+    }
+  }, [user]);
+
+  /**
+   * Função auxiliar para criar perfil padrão se não existir
+   */
+  const ensureUserProfile = useCallback(async (firebaseUser: User, name?: string) => {
     const userRef = doc(db, "users", firebaseUser.uid);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      // Cria o perfil se for um login novo (Google) ou registro falho anterior
       const newProfile: UserProfile = {
         uid: firebaseUser.uid,
         email: firebaseUser.email!,
         name: name || firebaseUser.displayName || "Aluno",
         role: "student",
-        avatarUrl: firebaseUser.photoURL || undefined,
+        avatarUrl: firebaseUser.photoURL || null,
         xp: 0,
         level: 1,
         createdAt: new Date().toISOString(),
@@ -81,11 +157,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       await setDoc(userRef, newProfile);
     }
-  };
+  }, []);
 
+  /**
+   * Listener principal de autenticação
+   */
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // Atualiza o cookie sempre que o estado de auth mudar
+      await updateAuthCookie(currentUser);
 
       if (currentUser) {
         // Escuta o perfil em tempo real
@@ -94,12 +176,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (docSnap.exists()) {
             setProfile(docSnap.data() as UserProfile);
           } else {
-            // Se o usuário existe no Auth mas não no Firestore, cria agora (Auto-Fix)
             ensureUserProfile(currentUser);
           }
           setLoading(false);
         }, (error) => {
-          console.error("Erro perfil:", error);
+          console.error("Erro ao carregar perfil:", error);
           setLoading(false);
         });
 
@@ -111,57 +192,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribeAuth();
-  }, []);
+  }, [updateAuthCookie, ensureUserProfile]);
 
-  // Proteção de Rotas Básica
+  /**
+   * Refresh automático do token a cada 50 minutos
+   * (tokens do Firebase expiram em 1 hora)
+   */
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshInterval = setInterval(async () => {
+      await refreshToken();
+    }, 50 * 60 * 1000); // 50 minutos
+
+    return () => clearInterval(refreshInterval);
+  }, [user, refreshToken]);
+
+  /**
+   * Proteção de Rotas no Cliente
+   * (Complementa o middleware para melhor UX)
+   */
   useEffect(() => {
     if (!loading) {
-      const isPublicPage = pathname === "/";
+      const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register";
+      
       if (!user && !isPublicPage) {
         router.push("/");
-      } else if (user && isPublicPage) {
+      } else if (user && pathname === "/") {
         router.push("/dashboard");
       }
     }
   }, [user, loading, pathname, router]);
 
+  /**
+   * Login com email e senha
+   */
   const login = async (email: string, pass: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      // O useEffect cuidará do resto
-    } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+      const result = await signInWithEmailAndPassword(auth, email, pass);
+      // Seta o cookie imediatamente após login bem-sucedido
+      const token = await result.user.getIdToken();
+      setAuthCookie(token);
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error as AuthError));
     }
   };
 
+  /**
+   * Login com Google
+   */
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const res = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      
       // Garante que o perfil existe no Firestore
-      await ensureUserProfile(res.user);
-    } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+      await ensureUserProfile(result.user);
+      
+      // Seta o cookie
+      const token = await result.user.getIdToken();
+      setAuthCookie(token);
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error as AuthError));
     }
   };
 
-  // ... imports
-
+  /**
+   * Registro de novo usuário
+   */
   const register = async (name: string, email: string, pass: string) => {
     try {
       const { user: newUser } = await createUserWithEmailAndPassword(auth, email, pass);
       
-      // Atualiza o nome no Auth do Firebase (não no Firestore)
+      // Atualiza o nome no Auth do Firebase
       await updateProfile(newUser, { displayName: name });
 
-      // Preparando o objeto para o Firestore
-      // CORREÇÃO AQUI: Garantimos que avatarUrl seja null se não existir
+      // Cria o perfil no Firestore
       const newProfile: UserProfile = {
         uid: newUser.uid,
         email,
         name,
         role: "student",
-        avatarUrl: newUser.photoURL || null, // <--- O SEGREDO: Use '|| null'. Nunca deixe undefined.
+        avatarUrl: newUser.photoURL || null,
         xp: 0,
         level: 1,
         createdAt: new Date().toISOString(),
@@ -177,8 +289,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      // Agora o setDoc vai funcionar porque null é um valor válido para JSON/Firestore
       await setDoc(doc(db, "users", newUser.uid), newProfile);
+      
+      // Seta o cookie
+      const token = await newUser.getIdToken();
+      setAuthCookie(token);
       
     } catch (error) {
       console.error("Erro no registro:", error);
@@ -186,18 +301,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-// ... restante do código
-
+  /**
+   * Reset de senha
+   */
   const resetPassword = async (email: string) => {
     try {
       await sendPasswordResetEmail(auth, email);
       addToast("E-mail de recuperação enviado!", "success");
-    } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error as AuthError));
     }
   };
 
+  /**
+   * Logout
+   */
   const logout = async () => {
+    // Remove o cookie ANTES do signOut para evitar race conditions
+    removeAuthCookie();
     await signOut(auth);
     setProfile(null);
     router.push("/");
@@ -206,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ 
       user, profile, loading, 
-      login, loginWithGoogle, register, resetPassword, logout 
+      login, loginWithGoogle, register, resetPassword, logout, refreshToken
     }}>
       {children}
     </AuthContext.Provider>

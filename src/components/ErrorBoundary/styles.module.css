@@ -1,0 +1,275 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(30, 20, 40, 0.95) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 100, 100, 0.2);
+}
+
+/* Variações por nível */
+.page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 2rem;
+}
+
+.section {
+  min-height: 400px;
+  width: 100%;
+  padding: 2rem;
+  margin: 1rem 0;
+}
+
+.component {
+  min-height: 200px;
+  width: 100%;
+  padding: 1.5rem;
+}
+
+/* ============================================================================
+   2. CONTEÚDO
+   ============================================================================ */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 500px;
+  gap: 1rem;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 100, 100, 0.2) 0%, rgba(255, 50, 50, 0.1) 100%);
+  color: #ff6b6b;
+  margin-bottom: 0.5rem;
+}
+
+.section .iconWrapper {
+  width: 80px;
+  height: 80px;
+}
+
+.component .iconWrapper {
+  width: 60px;
+  height: 60px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.section .title {
+  font-size: 1.25rem;
+}
+
+.component .title {
+  font-size: 1rem;
+}
+
+.message {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.component .message {
+  font-size: 0.875rem;
+}
+
+/* ============================================================================
+   3. AÇÕES / BOTÕES
+   ============================================================================ */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.btnPrimary,
+.btnSecondary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #915bf5 0%, #7c3aed 100%);
+  color: white;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(145, 91, 245, 0.4);
+}
+
+.btnSecondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btnGhost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.5rem 1rem;
+}
+
+.btnGhost:hover {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   4. DETALHES TÉCNICOS
+   ============================================================================ */
+
+.technicalSection {
+  width: 100%;
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+}
+
+.detailsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.detailsToggle:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.detailsContent {
+  margin-top: 1rem;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.8rem;
+}
+
+.errorName,
+.errorMessage {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.75rem;
+  word-break: break-word;
+}
+
+.errorName strong,
+.errorMessage strong {
+  color: #ff6b6b;
+  margin-right: 0.5rem;
+}
+
+.stackTrace {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.stackTrace strong {
+  display: block;
+  color: #ffd93d;
+  margin-bottom: 0.5rem;
+}
+
+/* Scrollbar customizada para stack trace */
+.stackTrace::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stackTrace::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.stackTrace::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.stackTrace::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   5. RESPONSIVIDADE
+   ============================================================================ */
+
+@media (max-width: 600px) {
+  .page {
+    padding: 1rem;
+  }
+
+  .content {
+    gap: 0.75rem;
+  }
+
+  .iconWrapper {
+    width: 70px;
+    height: 70px;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .message {
+    font-size: 0.9rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btnPrimary,
+  .btnSecondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
