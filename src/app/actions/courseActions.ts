@@ -1,77 +1,142 @@
 // src/app/actions/courseActions.ts
 "use server";
 
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import { revalidatePath } from "next/cache";
+
+// Sistema de erros e logging
+import { 
+  NotFoundError,
+  ValidationError,
+  handleActionError,
+  type ActionResult 
+} from "@/lib/errors";
+import { createActionLogger } from "@/lib/errors/logger";
+
+// Sistema de autenticação
+import { authenticateRequest } from "@/lib/server/auth";
+
+// Sistema de rate limiting
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/server/rateLimit";
+
+// Gamificação
 import { calculateLevel, calculateCoinReward, GAME_CONFIG } from "@/lib/gameRules";
 
-export async function finishLessonServerAction(token: string, courseId: string, moduleId: string, lessonId: string) {
-  try {
-    // 1. Validação de Token
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+/**
+ * ============================================================================
+ * TIPOS
+ * ============================================================================
+ */
 
-    // 2. Referências
+interface FinishLessonResult {
+  leveledUp: boolean;
+  newLevel: number;
+  xpEarned: number;
+  coinsEarned: number;
+  newProgress: number;
+  message: string;
+}
+
+/**
+ * ============================================================================
+ * FINISH LESSON SERVER ACTION
+ * ============================================================================
+ * Marca uma aula como concluída e processa recompensas de gamificação.
+ */
+export async function finishLessonServerAction(
+  token: string, 
+  courseId: string, 
+  moduleId: string, 
+  lessonId: string
+): Promise<ActionResult<FinishLessonResult> & { 
+  // Campos extras para compatibilidade com o frontend existente
+  leveledUp?: boolean;
+  newLevel?: number;
+  xpEarned?: number;
+  coinsEarned?: number;
+  message?: string;
+}> {
+  const actionLogger = createActionLogger('finishLesson');
+  
+  try {
+    // 1. AUTENTICAÇÃO
+    const { user } = await authenticateRequest(token);
+    const userId = user.uid;
+
+    actionLogger.debug('Iniciando conclusão de aula', { userId, courseId, moduleId, lessonId });
+
+    // 2. RATE LIMITING
+    checkRateLimit(RATE_LIMIT_CONFIGS.DEFAULT, userId);
+
+    // 3. VALIDAÇÃO
+    if (!courseId || !moduleId || !lessonId) {
+      throw new ValidationError('IDs obrigatórios não fornecidos');
+    }
+
+    // 4. REFERÊNCIAS
     const courseRef = adminDb.collection("courses").doc(courseId);
     const enrollmentRef = adminDb.collection("enrollments").doc(`${userId}_${courseId}`);
     const userRef = adminDb.collection("users").doc(userId);
     const lessonRef = courseRef.collection("modules").doc(moduleId).collection("lessons").doc(lessonId);
 
-    // 3. Transação Atômica
+    // 5. TRANSAÇÃO ATÔMICA
     const result = await adminDb.runTransaction(async (t) => {
       // Leituras (DEVEM vir antes das escritas)
       const lessonDoc = await t.get(lessonRef);
       const userDoc = await t.get(userRef);
       const courseDoc = await t.get(courseRef);
-      let enrollmentDoc = await t.get(enrollmentRef); // Note o 'let'
+      const enrollmentDoc = await t.get(enrollmentRef);
 
-      if (!lessonDoc.exists) throw new Error("Aula não encontrada.");
+      if (!lessonDoc.exists) {
+        throw new NotFoundError('Aula');
+      }
       
-      // --- CORREÇÃO DE OURO: AUTO-MATRÍCULA (Server-Side) ---
+      if (!userDoc.exists) {
+        throw new NotFoundError('Usuário');
+      }
+
+      // Auto-matrícula se necessário
       let enrollmentData = enrollmentDoc.data();
 
       if (!enrollmentDoc.exists) {
-        // Se a matrícula não existe, preparamos o objeto inicial
         const initialEnrollmentData = {
-            userId,
-            courseId,
-            progress: 0,
-            completedLessons: [],
-            completedQuizzes: [],
-            status: "active",
-            lastAccess: FieldValue.serverTimestamp(),
-            createdAt: FieldValue.serverTimestamp()
+          userId,
+          courseId,
+          progress: 0,
+          completedLessons: [],
+          completedQuizzes: [],
+          status: "active",
+          lastAccess: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp()
         };
         
-        // Criamos dentro da transação para garantir existência
         t.set(enrollmentRef, initialEnrollmentData);
-        
-        // Atualizamos a variável local para o código abaixo usar
-        enrollmentData = initialEnrollmentData; 
+        enrollmentData = initialEnrollmentData;
       }
-      // -------------------------------------------------------
 
-      const userData = userDoc.data();
-      if (!userData) throw new Error("Usuário não encontrado.");
-
+      const userData = userDoc.data()!;
       const completedLessons = enrollmentData?.completedLessons || [];
 
-      // A. Evita processar se já completou
+      // Evita processar se já completou
       if (completedLessons.includes(lessonId)) {
-        return { success: false, reason: "already_completed" };
+        return { 
+          success: false, 
+          alreadyCompleted: true,
+          currentProgress: enrollmentData?.progress || 0
+        };
       }
 
-      // B. Dados para Recompensa e Progresso
-      const lessonData = lessonDoc.data();
+      // Dados para Recompensa e Progresso
+      const lessonData = lessonDoc.data()!;
       const courseData = courseDoc.data();
-      const xpReward = lessonData?.xpReward || GAME_CONFIG.REWARDS.BASE_LESSON_XP;
+      const xpReward = lessonData.xpReward || GAME_CONFIG.REWARDS.BASE_LESSON_XP;
       
       const newCompletedList = [...completedLessons, lessonId];
-      const totalLessons = courseData?.totalLessons || 1; // Evita divisão por zero
+      const totalLessons = courseData?.totalLessons || 1;
       const newProgress = Math.min(Math.round((newCompletedList.length / totalLessons) * 100), 100);
 
-      // C. Atualiza Matrícula (Com merge true para segurança)
+      // Atualiza Matrícula
       t.set(enrollmentRef, {
         completedLessons: FieldValue.arrayUnion(lessonId),
         lastAccess: FieldValue.serverTimestamp(),
@@ -80,10 +145,9 @@ export async function finishLessonServerAction(token: string, courseId: string, 
         completedAt: newProgress === 100 ? FieldValue.serverTimestamp() : null
       }, { merge: true });
 
-      // D. Lógica de Nível e Moedas
+      // Lógica de Nível e Moedas
       const currentXp = userData.xp || 0;
       const currentLevel = userData.level || 1;
-
       const newXp = currentXp + xpReward;
       const newLevel = calculateLevel(newXp);
       const leveledUp = newLevel > currentLevel;
@@ -95,13 +159,15 @@ export async function finishLessonServerAction(token: string, courseId: string, 
         
         const coinHistoryRef = adminDb.collection("coin_history").doc();
         t.set(coinHistoryRef, {
-            userId,
-            amount: coinsEarned,
-            type: 'level_up',
-            description: `Recompensa por alcançar o Nível ${newLevel}`,
-            createdAt: FieldValue.serverTimestamp(),
-            metadata: { levelReached: newLevel }
+          userId,
+          amount: coinsEarned,
+          type: 'level_up',
+          description: `Recompensa por alcançar o Nível ${newLevel}`,
+          createdAt: FieldValue.serverTimestamp(),
+          metadata: { levelReached: newLevel }
         });
+
+        actionLogger.info('Usuário subiu de nível!', { userId, newLevel, coinsEarned });
       }
 
       // Atualiza Usuário
@@ -110,52 +176,93 @@ export async function finishLessonServerAction(token: string, courseId: string, 
         level: newLevel,
         "stats.lessonsCompleted": FieldValue.increment(1),
         ...(leveledUp ? {
-            "wallet.coins": FieldValue.increment(coinsEarned),
-            "wallet.totalCoinsEarned": FieldValue.increment(coinsEarned)
+          "wallet.coins": FieldValue.increment(coinsEarned),
+          "wallet.totalCoinsEarned": FieldValue.increment(coinsEarned)
         } : {})
       });
 
-      // E. Histórico de XP
+      // Histórico de XP
       const xpHistoryRef = adminDb.collection("xp_history").doc();
       t.set(xpHistoryRef, {
         userId,
         action: "lesson_completed",
-        description: `Conclusão: ${lessonData?.title || 'Aula'}`,
+        description: `Conclusão: ${lessonData.title || 'Aula'}`,
         xpAmount: xpReward,
         createdAt: FieldValue.serverTimestamp(),
-        metadata: { courseId, lessonId }
+        metadata: { courseId, moduleId, lessonId }
       });
 
-      return { success: true, leveledUp, newLevel, xpReward, coinsEarned };
+      return { 
+        success: true, 
+        leveledUp, 
+        newLevel, 
+        xpReward, 
+        coinsEarned, 
+        newProgress,
+        lessonTitle: lessonData.title
+      };
     });
 
-    if (!result.success && result.reason === "already_completed") {
-      return { success: false, message: "Aula já concluída." };
+    // 6. RESULTADO
+    if (!result.success && result.alreadyCompleted) {
+      return { 
+        success: true, // Retornamos success pois não é erro, apenas já estava concluída
+        data: {
+          leveledUp: false,
+          newLevel: 0,
+          xpEarned: 0,
+          coinsEarned: 0,
+          newProgress: result.currentProgress || 0,
+          message: "Aula já concluída anteriormente."
+        },
+        leveledUp: false,
+        xpEarned: 0,
+        message: "Aula já concluída anteriormente."
+      };
     }
 
+    // 7. REVALIDAÇÃO DE CACHE
     revalidatePath(`/dashboard/courses/${courseId}/learn`);
-    revalidatePath(`/dashboard`); 
+    revalidatePath(`/dashboard`);
 
-    // CORREÇÃO AQUI: Use 'result.xpReward' em vez de 'result.xpEarned'
-    let message = `Aula concluída! +${result.xpReward} XP`; 
-    
+    // 8. MENSAGEM DE FEEDBACK
+    let message = `Aula concluída! +${result.xpReward} XP`;
     if (result.leveledUp) {
-        // Certifique-se que coinsEarned está sendo retornado na transação lá em cima
-        message = `SUBIU DE NÍVEL! Lvl ${result.newLevel} (+${result.coinsEarned} Moedas)`;
+      message = `SUBIU DE NÍVEL! Lvl ${result.newLevel} (+${result.coinsEarned} Moedas)`;
     }
+
+    actionLogger.info('Aula concluída com sucesso', { 
+      userId, 
+      lessonId, 
+      xpEarned: result.xpReward,
+      leveledUp: result.leveledUp 
+    });
 
     return { 
-      success: true, 
-      leveledUp: result.leveledUp, 
+      success: true,
+      data: {
+        leveledUp: result.leveledUp,
+        newLevel: result.newLevel,
+        xpEarned: result.xpReward,
+        coinsEarned: result.coinsEarned,
+        newProgress: result.newProgress,
+        message
+      },
+      // Campos extras para compatibilidade
+      leveledUp: result.leveledUp,
       newLevel: result.newLevel,
-      // Aqui mapeamos o valor interno (xpReward) para o nome externo (xpEarned)
-      xpEarned: result.xpReward, 
+      xpEarned: result.xpReward,
       coinsEarned: result.coinsEarned,
       message
     };
 
   } catch (error) {
-    console.error("Erro na Server Action:", error);
-    return { success: false, message: "Erro ao processar conclusão." };
+    actionLogger.error('Erro ao concluir aula', error, { courseId, moduleId, lessonId });
+    
+    const result = handleActionError(error);
+    return {
+      ...result,
+      message: result.success === false ? result.error.message : undefined
+    };
   }
 }

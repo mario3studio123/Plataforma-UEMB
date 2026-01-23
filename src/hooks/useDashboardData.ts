@@ -13,17 +13,27 @@ export function useDashboardData() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [lastActiveCourse, setLastActiveCourse] = useState<{ course: Course; progress: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // 1. CARROSSEL OTIMIZADO: Busca apenas os 10 cursos mais recentes
+        // 1. CARROSSEL OTIMIZADO: Busca apenas os 10 cursos mais recentes publicados
         const coursesRef = collection(db, "courses");
-        const qCourses = query(coursesRef, orderBy("createdAt", "desc"), limit(10));
+        const qCourses = query(
+          coursesRef, 
+          where("published", "==", true),
+          orderBy("createdAt", "desc"), 
+          limit(10)
+        );
         const coursesSnap = await getDocs(qCourses);
         const coursesList = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Course[];
 
@@ -37,12 +47,11 @@ export function useDashboardData() {
         const qEnroll = query(
             enrollRef, 
             where("userId", "==", user.uid), 
-            where("status", "==", "active"), // Só traz cursos não finalizados
+            where("status", "==", "active"),
             orderBy("lastAccess", "desc"), 
             limit(1)
         );
         
-        // Nota: Se der erro de índice no console, clique no link que o Firebase fornece para criar.
         const enrollSnap = await getDocs(qEnroll);
 
         if (!enrollSnap.empty) {
@@ -58,8 +67,9 @@ export function useDashboardData() {
             }
         }
 
-      } catch (error) {
-        console.error("Erro no dashboard data:", error);
+      } catch (err) {
+        console.error("Erro no dashboard data:", err);
+        setError(err instanceof Error ? err : new Error("Erro ao carregar dados do dashboard"));
       } finally {
         setLoading(false);
       }
@@ -68,5 +78,5 @@ export function useDashboardData() {
     fetchData();
   }, [user]);
 
-  return { featured, courses, lastActiveCourse, loading };
+  return { featured, courses, lastActiveCourse, loading, error };
 }

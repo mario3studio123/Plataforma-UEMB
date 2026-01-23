@@ -9,13 +9,22 @@ import HeroSection from "@/components/Dashboard/HeroSection";
 import CoursesCarousel from "@/components/Dashboard/CoursesCarousel";
 import TopBar from "@/components/TopBar";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { PageErrorBoundary } from "@/components/ErrorBoundary";
 
 gsap.registerPlugin(useGSAP);
 
-export default function DashboardHome() {
+/**
+ * Conteúdo principal do Dashboard
+ */
+function DashboardContent() {
   const { isExpanded } = useSidebar();
   
-  const { featured, courses, lastActiveCourse, loading } = useDashboardData();
+  const { featured, courses, lastActiveCourse, loading, error } = useDashboardData();
+
+  // Se houver erro, deixa o Error Boundary capturar
+  if (error) {
+    throw error;
+  }
 
   const heroData = lastActiveCourse ? lastActiveCourse.course : featured;
   const heroMode = lastActiveCourse ? "resume" : "featured";
@@ -35,7 +44,6 @@ export default function DashboardHome() {
   return (
     <div className={styles.container} ref={containerRef}>
       
-
       <div className={styles.topBarWrapper}>
          <TopBar />
       </div>
@@ -54,5 +62,16 @@ export default function DashboardHome() {
       )}
 
     </div>
+  );
+}
+
+/**
+ * Export Default com Error Boundary
+ */
+export default function DashboardHome() {
+  return (
+    <PageErrorBoundary message="Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.">
+      <DashboardContent />
+    </PageErrorBoundary>
   );
 }

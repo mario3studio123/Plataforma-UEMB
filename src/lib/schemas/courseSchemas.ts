@@ -91,7 +91,8 @@ export const LessonSummarySchema = z.object({
 export const ModuleSummarySchema = z.object({
   id: z.string(),
   title: z.string(),
-  lessons: z.array(LessonSummarySchema).default([])
+  lessons: z.array(LessonSummarySchema).default([]),
+  hasQuiz: z.boolean().optional().default(false)
 });
 
 // Schema completo para criação/edição de Módulo
@@ -159,5 +160,19 @@ export type QuizQuestionInput = z.infer<typeof QuizQuestionSchema>;
 export type ReorderItem = z.infer<typeof ReorderItemSchema>;
 
 export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;
-export type SyllabusModule = z.infer<typeof ModuleSummarySchema>;
-export type SyllabusLesson = z.infer<typeof LessonSummarySchema>;
+
+// Tipos explícitos para Syllabus (evita problemas com z.infer + .default())
+export interface SyllabusLesson {
+  id: string;
+  title: string;
+  duration: number;
+  type?: 'video' | 'quiz';
+  freePreview?: boolean;
+}
+
+export interface SyllabusModule {
+  id: string;
+  title: string;
+  lessons: SyllabusLesson[];
+  hasQuiz?: boolean;
+}

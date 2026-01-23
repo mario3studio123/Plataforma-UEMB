@@ -1,3 +1,10 @@
+/* src/components/ErrorBoundary/styles.module.css */
+/* Estilos para os componentes de Error Boundary */
+
+/* ============================================================================
+   1. CONTAINER BASE
+   ============================================================================ */
+
 .container {
   display: flex;
   align-items: center;

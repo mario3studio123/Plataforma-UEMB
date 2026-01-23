@@ -1,9 +1,9 @@
 // src/app/dashboard/courses/[id]/learn/page.tsx
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query"; // <--- 1. IMPORTAR ISTO
+import { useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "@/context/SidebarContext";
 import { useToast } from "@/context/ToastContext";
 import { CheckCircle, Loader2 } from "lucide-react";
@@ -15,18 +15,24 @@ import { useGSAP } from "@gsap/react";
 import VideoPlayer from "@/components/Course/VideoPlayer";
 import QuizPlayer from "@/components/Course/QuizPlayer";
 import CourseSidebar from "@/components/Course/CourseSidebar";
+import { PageErrorBoundary } from "@/components/ErrorBoundary";
 
 // Hooks e Store
 import { useCourseContent, useLesson } from "@/hooks/useCourses";
 import { useEnrollment, useCompleteLesson } from "@/hooks/useProgress";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { formatDuration } from "@/utils/formatters";
-import { useAuth } from "@/context/AuthContext"; // Para pegar o ID do usuário
+import { useAuth } from "@/context/AuthContext";
 
-export default function CoursePlayerPage() {
+/**
+ * ============================================================================
+ * COMPONENTE PRINCIPAL DA PÁGINA
+ * ============================================================================
+ */
+function CoursePlayerContent() {
   const { id } = useParams();
   const router = useRouter();
-  const queryClient = useQueryClient(); // <--- 2. INICIALIZAR O CLIENTE
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   
   const courseId = id as string;
@@ -34,7 +40,7 @@ export default function CoursePlayerPage() {
   const { addToast } = useToast();
   
   // Dados & Hooks Globais
-  const { data: contentData, isLoading: loadingContent } = useCourseContent(courseId);
+  const { data: contentData, isLoading: loadingContent, error: contentError } = useCourseContent(courseId);
   const { data: enrollment } = useEnrollment(courseId);
   const { mutate: completeLesson, isPending: markingComplete } = useCompleteLesson();
 
@@ -45,6 +51,12 @@ export default function CoursePlayerPage() {
   } = usePlayerStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Ref para controlar se já inicializou (evita re-inicialização)
+  const hasInitializedRef = useRef(false);
+  // Ref para o reset (evita que o reset entre nas dependências do useEffect)
+  const resetRef = useRef(reset);
+  resetRef.current = reset;
 
   // --- LAZY LOADING INTELIGENTE ---
   const shouldFetchDetails = activeLesson && !activeLesson.videoUrl;
@@ -58,9 +70,12 @@ export default function CoursePlayerPage() {
   const currentVideoUrl = activeLesson?.videoUrl || lessonDetails?.videoUrl;
   const currentDescription = lessonDetails?.description || activeLesson?.description;
 
-  const savedProgress = activeLesson && enrollment?.progressData?.[activeLesson.id]?.secondsWatched 
-    ? enrollment.progressData[activeLesson.id].secondsWatched 
-    : 0;
+  // Progresso salvo do vídeo (com acesso seguro ao tipo)
+  const savedProgress = (() => {
+    if (!activeLesson?.id || !enrollment?.progressData) return 0;
+    const lessonProgress = enrollment.progressData[activeLesson.id];
+    return lessonProgress?.secondsWatched ?? 0;
+  })();
 
   // --- LÓGICA DE NAVEGAÇÃO ---
   const hasNextStep = useMemo(() => {
@@ -78,16 +93,30 @@ export default function CoursePlayerPage() {
     return false;
   }, [contentData, activeModuleId, activeLesson]);
 
-  // --- Efeitos ---
+  // --- EFEITO: Inicialização (apenas uma vez quando os dados carregam) ---
   useEffect(() => {
-    if (contentData && !activeLesson && contentType === 'lesson') {
+    // Só inicializa se:
+    // 1. Temos dados do conteúdo
+    // 2. Ainda não inicializou
+    // 3. Não tem aula ativa (store está limpo)
+    if (contentData && !hasInitializedRef.current && !activeLesson) {
       const firstMod = contentData.modules[0];
       if (firstMod?.lessons[0]) {
+        hasInitializedRef.current = true;
         initialize(courseId, firstMod, firstMod.lessons[0]);
       }
     }
-    return () => { reset(); }
-  }, [contentData, courseId, initialize, reset]);
+  }, [contentData, courseId, initialize, activeLesson]);
+
+  // --- EFEITO: Cleanup apenas na desmontagem real do componente ---
+  useEffect(() => {
+    // Este efeito só tem o cleanup, sem lógica no corpo
+    // Isso garante que o reset só é chamado quando o componente desmonta
+    return () => {
+      hasInitializedRef.current = false;
+      resetRef.current();
+    };
+  }, []); // Array vazio = só executa na montagem/desmontagem
 
   // Animação Layout
   const paddingValue = isExpanded ? 430 : 180;
@@ -109,7 +138,10 @@ export default function CoursePlayerPage() {
     completeLesson({ courseId, moduleId: activeModuleId, lessonId: activeLesson.id }, {
       onSuccess: (res) => {
          if (res.success) addToast(res.leveledUp ? `SUBIU DE NÍVEL! Lvl ${res.newLevel}` : `Aula concluída! +${res.xpEarned} XP`, "success");
-         // Nota: O useCompleteLesson já faz a invalidação automática, por isso não precisa aqui
+      },
+      onError: (error) => {
+         addToast("Erro ao salvar progresso. Tente novamente.", "error");
+         console.error("Erro ao completar aula:", error);
       }
     });
   };
@@ -133,33 +165,42 @@ export default function CoursePlayerPage() {
       }
   };
 
-  // --- 🔥 AQUI ESTÁ A CORREÇÃO 🔥 ---
-  
-  // 1. Quando passar na prova, atualizamos os dados IMEDIATAMENTE
+  // Quando passar na prova, atualizamos os dados IMEDIATAMENTE
   const handleQuizPass = async () => {
-      // Invalida o cache da matrícula -> Atualiza Sidebar (Check verde e barra de progresso)
       await queryClient.invalidateQueries({ queryKey: ['enrollment', user?.uid, courseId] });
-      
-      // Invalida o cache do perfil -> Atualiza TopBar (XP e Nível)
-      // Nota: A key depende de como você configurou no AuthContext, mas geralmente 'userProfile' é seguro se usar custom hook
-      // Se o AuthContext usa onSnapshot (tempo real), ele atualiza sozinho. 
-      // Mas se o TopBar usar dados cacheados, forçamos aqui:
       await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
   };
 
-  // 2. Quando fechar (Continuar Jornada), decidimos para onde ir
+  // Quando fechar (Continuar Jornada), decidimos para onde ir
   const handleQuizClose = () => {
-      // Opção A: Voltar para a biblioteca
       router.push('/dashboard/courses');
-      
-      // Opção B: Se quiser apenas fechar o player e mostrar a lista de aulas atualizada:
-      // reset(); 
   };
 
   // --- Renderização ---
 
-  if (loadingContent) return <div className={styles.loading}>Carregando estrutura...</div>;
-  if (!contentData) return <div className={styles.emptyState}>Conteúdo não disponível.</div>;
+  if (loadingContent) {
+    return (
+      <div className={styles.loading}>
+        <Loader2 className={styles.spin} size={40} />
+        <p>Carregando curso...</p>
+      </div>
+    );
+  }
+
+  if (contentError) {
+    throw contentError; // Deixa o Error Boundary capturar
+  }
+
+  if (!contentData) {
+    return (
+      <div className={styles.emptyState}>
+        <p>Conteúdo não disponível.</p>
+        <button onClick={() => router.push('/dashboard/courses')} className={styles.backBtn}>
+          Voltar para Cursos
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.pageContainer} ref={containerRef}>
@@ -169,7 +210,7 @@ export default function CoursePlayerPage() {
             <QuizPlayer 
               courseId={courseId} 
               moduleId={activeModuleId} 
-              onPass={handleQuizPass} // <--- Passamos a nova função de refresh
+              onPass={handleQuizPass}
               onClose={handleQuizClose}
             />
           ) : activeLesson ? (
@@ -201,7 +242,7 @@ export default function CoursePlayerPage() {
              activeModuleId={activeModuleId}
              contentType={contentType}
              completedLessons={enrollment?.completedLessons || []}
-             completedQuizzes={enrollment?.completedQuizzes || []} // Isso agora virá atualizado!
+             completedQuizzes={enrollment?.completedQuizzes || []}
              onSelectLesson={(lesson, modId) => setActiveLesson(lesson, modId)}
              onSelectQuiz={(modId) => openQuiz(modId)}
            />
@@ -230,7 +271,7 @@ export default function CoursePlayerPage() {
                >
                  {enrollment?.completedLessons.includes(activeLesson.id) 
                    ? <><CheckCircle size={18} /> Concluída</> 
-                   : "Concluir Aula"
+                   : markingComplete ? "Salvando..." : "Concluir Aula"
                  }
                </button>
             </div>
@@ -241,5 +282,18 @@ export default function CoursePlayerPage() {
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * ============================================================================
+ * EXPORT DEFAULT COM ERROR BOUNDARY
+ * ============================================================================
+ */
+export default function CoursePlayerPage() {
+  return (
+    <PageErrorBoundary message="Ocorreu um erro ao carregar o player do curso. Por favor, tente novamente.">
+      <CoursePlayerContent />
+    </PageErrorBoundary>
   );
 }

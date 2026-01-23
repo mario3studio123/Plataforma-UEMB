@@ -1,3 +1,5 @@
+// src/components/ErrorBoundary/index.tsx
+// Error Boundary para capturar erros em componentes React
 
 'use client';
 

@@ -16,6 +16,9 @@ import { useGSAP } from "@gsap/react";
 import styles from "./styles.module.css";
 import { useSidebar } from "@/context/SidebarContext";
 
+// Error Boundary
+import { PageErrorBoundary } from "@/components/ErrorBoundary";
+
 // Contexto (O Cérebro da Página)
 import { CourseEditorProvider, useCourseEditor } from "@/context/admin/CourseEditorContext";
 
@@ -26,16 +29,18 @@ import QuizEditor from "@/components/Admin/QuizEditor";
 import PublishToggle from "@/components/Admin/CourseManager/PublishToggle";
 
 // ============================================================================
-// 1. WRAPPER PRINCIPAL (Injeta o Contexto)
+// 1. WRAPPER PRINCIPAL (Injeta o Contexto e Error Boundary)
 // ============================================================================
 export default function ManageCoursePage() {
   const { id } = useParams();
   const courseId = id as string;
 
   return (
-    <CourseEditorProvider courseId={courseId}>
-      <CourseManagerLayout />
-    </CourseEditorProvider>
+    <PageErrorBoundary message="Ocorreu um erro ao carregar o editor de curso. Por favor, tente novamente.">
+      <CourseEditorProvider courseId={courseId}>
+        <CourseManagerLayout />
+      </CourseEditorProvider>
+    </PageErrorBoundary>
   );
 }
 

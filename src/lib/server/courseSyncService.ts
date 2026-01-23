@@ -1,36 +1,85 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import { SyllabusModule, SyllabusLesson } from "@/lib/schemas/courseSchemas";
-import { formatTime } from "@/utils/formatters"; // Certifique-se que esta função não usa hooks do React
+import { formatTime } from "@/utils/formatters";
+import { logger } from "@/lib/errors/logger";
 
 /**
- * 🔄 REBUILDER (O Coração da Robustez)
- * Esta função lê toda a hierarquia de um curso (Módulos -> Aulas)
- * e regenera o documento pai com dados agregados e o JSON de syllabus atualizado.
+ * ============================================================================
+ * TIPOS INTERNOS
+ * ============================================================================
  */
-export async function rebuildCourseSyllabus(courseId: string) {
-  console.log(`🏗️ [Sync] Iniciando reconstrução do curso: ${courseId}`);
+
+interface ModuleWithLessons {
+  moduleId: string;
+  moduleTitle: string;
+  moduleOrder: number;
+  lessons: SyllabusLesson[];
+  lessonsCount: number;
+  totalDurationSeconds: number;
+  hasQuiz: boolean;
+}
+
+interface RebuildResult {
+  success: boolean;
+  modulesCount?: number;
+  totalLessons?: number;
+  totalDuration?: string;
+  error?: string;
+}
+
+/**
+ * ============================================================================
+ * FUNÇÃO PRINCIPAL: rebuildCourseSyllabus
+ * ============================================================================
+ * Reconstrói o syllabus de um curso a partir da hierarquia completa.
+ * Otimizado para fazer uma única passagem pelos dados.
+ * 
+ * @param courseId - ID do curso a reconstruir
+ * @returns Resultado da operação
+ */
+export async function rebuildCourseSyllabus(courseId: string): Promise<RebuildResult> {
+  const startTime = Date.now();
+  logger.info(`Iniciando reconstrução do curso`, { courseId });
 
   try {
     const courseRef = adminDb.collection("courses").doc(courseId);
     
-    // 1. Buscar Módulos (Ordenados)
+    // ========================================
+    // 1. BUSCAR MÓDULOS (ordenados)
+    // ========================================
     const modulesSnapshot = await courseRef
       .collection("modules")
       .orderBy("order", "asc")
       .get();
 
-    const modulesCount = modulesSnapshot.size;
-    let totalLessonsCalculated = 0;
-    let totalDurationSeconds = 0;
-    
-    // Array final que será salvo no documento pai
-    const syllabus: SyllabusModule[] = [];
+    if (modulesSnapshot.empty) {
+      logger.warn("Curso sem módulos", { courseId });
+      
+      // Atualiza o curso com valores zerados
+      await courseRef.update({
+        syllabus: [],
+        modulesCount: 0,
+        totalLessons: 0,
+        totalDuration: "00:00:00",
+        totalDurationSeconds: 0,
+        updatedAt: FieldValue.serverTimestamp()
+      });
 
-    // 2. Iterar Módulos e Buscar Aulas (Parallel Fetching para performance)
-    // Usamos Promise.all para não bloquear em cascata (Waterfall)
-    await Promise.all(
-      modulesSnapshot.docs.map(async (modDoc) => {
+      return { 
+        success: true, 
+        modulesCount: 0, 
+        totalLessons: 0, 
+        totalDuration: "00:00:00" 
+      };
+    }
+
+    // ========================================
+    // 2. BUSCAR AULAS DE TODOS OS MÓDULOS (paralelo)
+    // ========================================
+    // Uma única passagem com Promise.all que retorna dados estruturados
+    const modulesWithLessons: ModuleWithLessons[] = await Promise.all(
+      modulesSnapshot.docs.map(async (modDoc, index) => {
         const modData = modDoc.data();
         
         // Busca aulas deste módulo
@@ -41,77 +90,229 @@ export async function rebuildCourseSyllabus(courseId: string) {
           .orderBy("order", "asc")
           .get();
 
-        const lessons: SyllabusLesson[] = [];
+        // Busca se tem quiz (verifica existência de questions)
+        const questionsSnapshot = await courseRef
+          .collection("modules")
+          .doc(modDoc.id)
+          .collection("questions")
+          .limit(1)
+          .get();
 
-        lessonsSnapshot.forEach((lessonDoc) => {
+        // Processa as aulas
+        let moduleDuration = 0;
+        const lessons: SyllabusLesson[] = lessonsSnapshot.docs.map((lessonDoc) => {
           const lData = lessonDoc.data();
           const duration = typeof lData.duration === 'number' ? lData.duration : 0;
+          moduleDuration += duration;
 
-          // Somatórios Globais
-          totalLessonsCalculated++;
-          totalDurationSeconds += duration;
-
-          // Constrói objeto leve para o Syllabus
-          lessons.push({
+          return {
             id: lessonDoc.id,
             title: lData.title || "Sem título",
             duration: duration,
-            type: 'video', // Por enquanto fixo, mas preparado para 'quiz'
+            type: 'video' as const,
             freePreview: lData.freePreview || false
-          });
+          };
         });
 
-        // Adiciona ao array principal (Respeitando a ordem do map original não é garantido no Promise.all
-        // por isso construímos o objeto completo e ordenamos depois ou inserimos com índice se necessário.
-        // Como o map do Promise.all pode desordenar, vamos usar um truque:
-        // A syllabus vai ser reconstruída baseada na ordem do modulesSnapshot síncrono abaixo.
+        return {
+          moduleId: modDoc.id,
+          moduleTitle: modData.title || `Módulo ${index + 1}`,
+          moduleOrder: modData.order ?? index,
+          lessons,
+          lessonsCount: lessons.length,
+          totalDurationSeconds: moduleDuration,
+          hasQuiz: !questionsSnapshot.empty
+        };
       })
     );
 
-    // *Correção para garantir ordem correta após Promise.all:*
-    // O loop acima foi para *cálculos*. Vamos montar o Syllabus sequencialmente ou mapear corretamente.
-    // Maneira mais segura e ainda rápida:
-    
-    for (const modDoc of modulesSnapshot.docs) {
-      const lessonsSnapshot = await courseRef
-        .collection("modules")
-        .doc(modDoc.id)
-        .collection("lessons")
-        .orderBy("order", "asc")
-        .get();
+    // ========================================
+    // 3. ORDENAR E CALCULAR TOTAIS
+    // ========================================
+    // Garante a ordem correta (Promise.all pode desordenar)
+    modulesWithLessons.sort((a, b) => a.moduleOrder - b.moduleOrder);
 
-      const modLessons: SyllabusLesson[] = lessonsSnapshot.docs.map(l => ({
-        id: l.id,
-        title: l.data().title,
-        duration: l.data().duration || 0,
-        type: 'video',
-        freePreview: l.data().freePreview || false
-      }));
+    // Calcula totais
+    let totalLessons = 0;
+    let totalDurationSeconds = 0;
+    let totalQuizzes = 0;
 
-      syllabus.push({
-        id: modDoc.id,
-        title: modDoc.data().title,
-        lessons: modLessons
-      });
+    for (const mod of modulesWithLessons) {
+      totalLessons += mod.lessonsCount;
+      totalDurationSeconds += mod.totalDurationSeconds;
+      if (mod.hasQuiz) totalQuizzes++;
     }
 
-    // 3. Atualização Atômica no Pai
-    // Agora temos a certeza absoluta dos números. Nada de "increment/decrement".
+    // ========================================
+    // 4. CONSTRUIR SYLLABUS
+    // ========================================
+    const syllabus: SyllabusModule[] = modulesWithLessons.map(mod => ({
+      id: mod.moduleId,
+      title: mod.moduleTitle,
+      lessons: mod.lessons,
+      hasQuiz: mod.hasQuiz
+    }));
+
+    // ========================================
+    // 5. ATUALIZAR DOCUMENTO DO CURSO
+    // ========================================
+    const totalDurationFormatted = formatTime(totalDurationSeconds);
+    
     await courseRef.update({
-      syllabus: syllabus, // O JSON Cacheado atualizado
-      modulesCount: modulesCount,
-      totalLessons: totalLessonsCalculated,
-      totalDuration: formatTime(totalDurationSeconds), // String formatada "HH:MM:SS"
-      // totalDurationSeconds: totalDurationSeconds, // Sugestão: Mantenha também o number para cálculos futuros
+      syllabus,
+      modulesCount: modulesWithLessons.length,
+      totalLessons,
+      totalQuizzes,
+      totalDuration: totalDurationFormatted,
+      totalDurationSeconds, // Também salva em segundos para cálculos
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    console.log(`✅ [Sync] Curso reconstruído. ${totalLessonsCalculated} aulas.`);
-    return { success: true };
+    // ========================================
+    // 6. LOG E RETORNO
+    // ========================================
+    const duration = Date.now() - startTime;
+    logger.info("Curso reconstruído com sucesso", {
+      courseId,
+      modulesCount: modulesWithLessons.length,
+      totalLessons,
+      totalQuizzes,
+      totalDuration: totalDurationFormatted,
+      executionTimeMs: duration
+    });
+
+    return {
+      success: true,
+      modulesCount: modulesWithLessons.length,
+      totalLessons,
+      totalDuration: totalDurationFormatted
+    };
 
   } catch (error) {
-    console.error("❌ [Sync] Erro crítico ao reconstruir curso:", error);
-    // Não lançamos erro para não quebrar a UI do admin, mas logamos severamente
-    return { success: false };
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    logger.error("Erro crítico ao reconstruir curso", error, { courseId });
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+/**
+ * ============================================================================
+ * FUNÇÃO AUXILIAR: updateCourseCounts
+ * ============================================================================
+ * Atualiza apenas as contagens de um curso sem reconstruir o syllabus completo.
+ * Útil para operações mais leves.
+ */
+export async function updateCourseCounts(courseId: string): Promise<RebuildResult> {
+  try {
+    const courseRef = adminDb.collection("courses").doc(courseId);
+    
+    // Conta módulos
+    const modulesSnapshot = await courseRef.collection("modules").get();
+    const modulesCount = modulesSnapshot.size;
+
+    // Conta aulas de todos os módulos em paralelo
+    const lessonsCounts = await Promise.all(
+      modulesSnapshot.docs.map(async (modDoc) => {
+        const lessonsSnapshot = await courseRef
+          .collection("modules")
+          .doc(modDoc.id)
+          .collection("lessons")
+          .get();
+        return lessonsSnapshot.size;
+      })
+    );
+
+    const totalLessons = lessonsCounts.reduce((sum, count) => sum + count, 0);
+
+    await courseRef.update({
+      modulesCount,
+      totalLessons,
+      updatedAt: FieldValue.serverTimestamp()
+    });
+
+    logger.debug("Contagens do curso atualizadas", { courseId, modulesCount, totalLessons });
+
+    return { success: true, modulesCount, totalLessons };
+
+  } catch (error) {
+    logger.error("Erro ao atualizar contagens", error, { courseId });
+    return { success: false, error: error instanceof Error ? error.message : "Erro desconhecido" };
+  }
+}
+
+/**
+ * ============================================================================
+ * FUNÇÃO AUXILIAR: validateCourseSyllabus
+ * ============================================================================
+ * Verifica se o syllabus está sincronizado com a estrutura real.
+ * Útil para diagnóstico.
+ */
+export async function validateCourseSyllabus(courseId: string): Promise<{
+  isValid: boolean;
+  issues: string[];
+}> {
+  const issues: string[] = [];
+
+  try {
+    const courseRef = adminDb.collection("courses").doc(courseId);
+    const courseDoc = await courseRef.get();
+
+    if (!courseDoc.exists) {
+      return { isValid: false, issues: ["Curso não encontrado"] };
+    }
+
+    const courseData = courseDoc.data()!;
+    const syllabus = courseData.syllabus as SyllabusModule[] | undefined;
+
+    // Verifica se existe syllabus
+    if (!syllabus || !Array.isArray(syllabus)) {
+      issues.push("Syllabus não existe ou não é um array");
+      return { isValid: false, issues };
+    }
+
+    // Busca estrutura real
+    const modulesSnapshot = await courseRef.collection("modules").get();
+    const realModulesCount = modulesSnapshot.size;
+
+    // Compara contagens
+    if (syllabus.length !== realModulesCount) {
+      issues.push(`Contagem de módulos inconsistente: syllabus=${syllabus.length}, real=${realModulesCount}`);
+    }
+
+    // Verifica cada módulo
+    for (const syllabusModule of syllabus) {
+      const moduleDoc = modulesSnapshot.docs.find(d => d.id === syllabusModule.id);
+      
+      if (!moduleDoc) {
+        issues.push(`Módulo ${syllabusModule.id} no syllabus não existe na estrutura real`);
+        continue;
+      }
+
+      const lessonsSnapshot = await courseRef
+        .collection("modules")
+        .doc(syllabusModule.id)
+        .collection("lessons")
+        .get();
+
+      if (syllabusModule.lessons.length !== lessonsSnapshot.size) {
+        issues.push(`Módulo ${syllabusModule.id}: aulas inconsistentes - syllabus=${syllabusModule.lessons.length}, real=${lessonsSnapshot.size}`);
+      }
+    }
+
+    return {
+      isValid: issues.length === 0,
+      issues
+    };
+
+  } catch (error) {
+    logger.error("Erro ao validar syllabus", error, { courseId });
+    return {
+      isValid: false,
+      issues: [error instanceof Error ? error.message : "Erro desconhecido"]
+    };
   }
 }
