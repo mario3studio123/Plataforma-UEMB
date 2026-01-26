@@ -56,10 +56,18 @@ export default function QuizPlayer({ courseId, moduleId, onPass, onClose }: Quiz
   useEffect(() => {
     const loadQuestions = async () => {
       const res = await getQuizQuestionsAction(courseId, moduleId);
-      if (res.success && res.data && res.data.length > 0) {
-        setQuestions(res.data);
+      
+      if (res.success) {
+        // Verifica se tem dados antes de setar
+        if (res.data && res.data.length > 0) {
+          setQuestions(res.data);
+        } else {
+          addToast("Nenhuma pergunta encontrada para este módulo.", "warning");
+          onClose();
+        }
       } else {
-        addToast(res.message || "Erro ao carregar prova.", "error");
+        // ✅ CORREÇÃO: O erro fica dentro de res.error
+        addToast(res.error.message || "Erro ao carregar prova.", "error");
         onClose();
       }
       setLoading(false);
@@ -111,24 +119,26 @@ export default function QuizPlayer({ courseId, moduleId, onPass, onClose }: Quiz
       const response = await submitQuizAction(token, courseId, moduleId, userAnswers);
       
       if (response.success) {
-        // Popula o estado com TODOS os dados necessários para o Overlay
-        setResult({
-          passed: response.passed || false,
-          score: response.scorePercent || 0,
-          xpEarned: response.xpEarned || 0,
-          
-          // Dados estatísticos vindos do backend
-          oldXp: response.stats?.oldXp || 0,
-          newXp: response.stats?.newXp || 0,
-          oldLevel: response.stats?.oldLevel || 1,
-          newLevel: response.stats?.newLevel || 1,
-          leveledUp: response.stats?.leveledUp || false
-        });
+      // ✅ CORREÇÃO: Os dados estão dentro de response.data
+      const quizResult = response.data; 
+
+      setResult({
+        passed: quizResult.passed,
+        score: quizResult.scorePercent,
+        xpEarned: quizResult.xpEarned,
+        
+        // Dados estatísticos
+        oldXp: quizResult.stats.oldXp,
+        newXp: quizResult.stats.newXp,
+        oldLevel: quizResult.stats.oldLevel,
+        newLevel: quizResult.stats.newLevel,
+        leveledUp: quizResult.stats.leveledUp
+      });
         
         // Notifica o componente pai (Sidebar) se passou
-        if(response.passed) {
-            onPass(response.xpEarned || 0);
-        }
+        if(quizResult.passed) {
+          onPass(quizResult.xpEarned);
+      }
       } else {
         addToast(response.message || "Erro ao corrigir.", "error");
       }

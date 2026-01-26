@@ -9,13 +9,16 @@ import {
 
 export type FirestoreDate = Timestamp | FieldValue | string | Date;
 
-export interface Course extends CreateCourseInput {
+export interface Course extends Omit<CreateCourseInput, 'syllabus' | 'totalDuration' | 'totalLessons'> {
   createdAt: FirestoreDate;
   updatedAt?: FirestoreDate;
+  
+  // Agora podemos definir estes campos livremente sem o TS reclamar
   modulesCount: number;
   totalLessons: number;
   totalDuration: number; 
   syllabus?: SyllabusModule[];
+  
   userProgress?: number; 
   userStatus?: "active" | "completed" | null;
   createdBy: string; 

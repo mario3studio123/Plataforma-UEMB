@@ -262,7 +262,10 @@ export function withTokenRateLimit<TArgs extends [string, ...unknown[]], TResult
   return withRateLimit(
     config,
     action,
-    (token: string) => {
+    // CORREÇÃO AQUI: Usamos ...args: TArgs para casar perfeitamente com a assinatura
+    (...args: TArgs) => {
+      const token = args[0]; // O TypeScript sabe que o primeiro item é string
+      
       // Usa hash simples do token como identificador
       // (não expõe o token completo nos logs)
       return `token:${hashString(token.slice(-20))}`;

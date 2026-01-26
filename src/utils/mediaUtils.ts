@@ -1,9 +1,3 @@
-// src/utils/mediaUtils.ts
-
-/**
- * Carrega o vídeo em memória temporária apenas para ler a duração.
- * Retorna a duração em segundos.
- */
 export const getVideoDuration = (file: File): Promise<number> => {
   return new Promise((resolve, reject) => {
     try {
@@ -11,7 +5,7 @@ export const getVideoDuration = (file: File): Promise<number> => {
       video.preload = 'metadata';
 
       video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(video.src); // Limpa memória
+        window.URL.revokeObjectURL(video.src);
         resolve(video.duration);
       };
 

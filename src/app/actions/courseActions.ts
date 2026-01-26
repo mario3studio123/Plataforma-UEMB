@@ -25,10 +25,11 @@ import { calculateLevel, calculateCoinReward, GAME_CONFIG } from "@/lib/gameRule
 
 /**
  * ============================================================================
- * TIPOS
+ * TIPOS INTERNOS
  * ============================================================================
  */
 
+// Define o formato de retorno esperado pelo Frontend (dentro de data)
 interface FinishLessonResult {
   leveledUp: boolean;
   newLevel: number;
@@ -38,11 +39,27 @@ interface FinishLessonResult {
   message: string;
 }
 
+// 🔥 NOVO: Define exatamente o que a transação pode retornar (Discriminated Union)
+type TransactionResult = 
+  | { 
+      success: true; 
+      leveledUp: boolean; 
+      newLevel: number; 
+      xpReward: number; 
+      coinsEarned: number; 
+      newProgress: number; 
+      lessonTitle: string; 
+    }
+  | { 
+      success: false; 
+      alreadyCompleted: true; 
+      currentProgress: number; 
+    };
+
 /**
  * ============================================================================
  * FINISH LESSON SERVER ACTION
  * ============================================================================
- * Marca uma aula como concluída e processa recompensas de gamificação.
  */
 export async function finishLessonServerAction(
   token: string, 
@@ -50,7 +67,7 @@ export async function finishLessonServerAction(
   moduleId: string, 
   lessonId: string
 ): Promise<ActionResult<FinishLessonResult> & { 
-  // Campos extras para compatibilidade com o frontend existente
+  // Campos extras para compatibilidade com o frontend antigo
   leveledUp?: boolean;
   newLevel?: number;
   xpEarned?: number;
@@ -80,21 +97,16 @@ export async function finishLessonServerAction(
     const userRef = adminDb.collection("users").doc(userId);
     const lessonRef = courseRef.collection("modules").doc(moduleId).collection("lessons").doc(lessonId);
 
-    // 5. TRANSAÇÃO ATÔMICA
-    const result = await adminDb.runTransaction(async (t) => {
+    // 5. TRANSAÇÃO ATÔMICA (Tipada com TransactionResult)
+    const result = await adminDb.runTransaction<TransactionResult>(async (t) => {
       // Leituras (DEVEM vir antes das escritas)
       const lessonDoc = await t.get(lessonRef);
       const userDoc = await t.get(userRef);
       const courseDoc = await t.get(courseRef);
       const enrollmentDoc = await t.get(enrollmentRef);
 
-      if (!lessonDoc.exists) {
-        throw new NotFoundError('Aula');
-      }
-      
-      if (!userDoc.exists) {
-        throw new NotFoundError('Usuário');
-      }
+      if (!lessonDoc.exists) throw new NotFoundError('Aula');
+      if (!userDoc.exists) throw new NotFoundError('Usuário');
 
       // Auto-matrícula se necessário
       let enrollmentData = enrollmentDoc.data();
@@ -203,10 +215,11 @@ export async function finishLessonServerAction(
       };
     });
 
-    // 6. RESULTADO
-    if (!result.success && result.alreadyCompleted) {
+    // 6. RESULTADO (Agora o TypeScript entende o fluxo)
+    if (!result.success) {
+      // Como verificamos !result.success, o TS sabe que é o objeto de "erro"
       return { 
-        success: true, // Retornamos success pois não é erro, apenas já estava concluída
+        success: true,
         data: {
           leveledUp: false,
           newLevel: 0,
@@ -226,6 +239,7 @@ export async function finishLessonServerAction(
     revalidatePath(`/dashboard`);
 
     // 8. MENSAGEM DE FEEDBACK
+    // Aqui o TS sabe que 'result' é o objeto de SUCESSO, então xpReward existe
     let message = `Aula concluída! +${result.xpReward} XP`;
     if (result.leveledUp) {
       message = `SUBIU DE NÍVEL! Lvl ${result.newLevel} (+${result.coinsEarned} Moedas)`;
@@ -234,7 +248,7 @@ export async function finishLessonServerAction(
     actionLogger.info('Aula concluída com sucesso', { 
       userId, 
       lessonId, 
-      xpEarned: result.xpReward,
+      xpEarned: result.xpReward, 
       leveledUp: result.leveledUp 
     });
 
@@ -243,12 +257,12 @@ export async function finishLessonServerAction(
       data: {
         leveledUp: result.leveledUp,
         newLevel: result.newLevel,
-        xpEarned: result.xpReward,
+        xpEarned: result.xpReward, // Mapeado corretamente
         coinsEarned: result.coinsEarned,
         newProgress: result.newProgress,
         message
       },
-      // Campos extras para compatibilidade
+      // Campos extras
       leveledUp: result.leveledUp,
       newLevel: result.newLevel,
       xpEarned: result.xpReward,

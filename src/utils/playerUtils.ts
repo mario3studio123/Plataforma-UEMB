@@ -1,5 +1,3 @@
-// src/utils/playerUtils.ts
-
 const STORAGE_KEYS = {
   VOLUME: "uemb_player_volume",
   SPEED: "uemb_player_speed",
@@ -15,7 +13,6 @@ export const getStoredVolume = (): number => {
 export const getStoredSpeed = (): number => {
   if (typeof window === "undefined") return 1.0;
   const val = localStorage.getItem(STORAGE_KEYS.SPEED);
-  // Validar se é um valor aceitável para evitar quebras
   const validSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   const parsed = val ? parseFloat(val) : 1.0;
   return validSpeeds.includes(parsed) ? parsed : 1.0;
