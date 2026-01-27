@@ -3,214 +3,512 @@
   flex-direction: column;
   width: 100%;
   min-height: 100vh;
-  background-color: #0f0d11;
+  background-color: #0d0b0f;
   color: #fff;
   
-  /* Paddings globais */
-  padding-top: 140px;
-  padding-right: 40px;
-  padding-bottom: 60px;
-  padding-left: 450px;
+  /* CORREÇÃO AQUI: */
+  /* Mudamos o padrão para 430px (Sidebar Aberta) para bater com o estado inicial do Contexto */
+  /* Antes estava 200px (Fechada), causando o conflito visual ao recarregar */
+  padding: 100px 40px 60px 430px; 
   
   box-sizing: border-box;
+  /* Mantemos a transição CSS como fallback suave */
+  transition: padding-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- SEÇÃO SUPERIOR (Vídeo + Lista) --- */
-.topSection {
-  display: flex;
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: auto auto auto; 
   gap: 24px;
   width: 100%;
-  
-  /* O SEGREDO: Stretch força os filhos a terem a mesma altura */
-  align-items: stretch; 
-  
-  /* Garante que a altura seja definida pelo vídeo (aspect-ratio), não pelo conteúdo da lista */
-  height: auto; 
 }
 
-/* Container do Vídeo */
 .playerWrapper {
-  flex: 1; /* Ocupa todo o espaço disponível */
-  min-width: 0; /* Evita overflow flexbox */
+  grid-column: 1;
+  grid-row: 1;
   
-  /* Aspect Ratio mantém o formato 16:9 independente da largura */
-  aspect-ratio: 16/9; 
-  
-  background-color: #000;
-  border-radius: 24px;
-  border: 1px solid #2d2833;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-color: #18151c;
+  border-radius: 20px;
+  border: 1px solid #2a2532;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
   z-index: 10;
 }
 
-/* Container da Sidebar (Wrapper) */
 .sidebarWrapper {
-  width: 400px; /* Largura fixa da lista */
-  min-width: 350px;
+  grid-column: 2;
+  /* O PULO DO GATO: Começa na linha 1 e estica por 2 linhas */
+  grid-row: 1 / span 2; 
   
-  /* IMPORTANTE: Relative para o filho Absolute se basear nele */
-  position: relative; 
-  flex-shrink: 0;
-  
-  /* Não defina height aqui, o align-items: stretch cuida disso */
+  height: 100%; /* Força ocupar a altura total das duas linhas da esquerda */
+  min-width: 300px;
 }
-
-/* --- SEÇÃO INFERIOR (Infos) --- */
-.infoSection {
-  width: 100%; /* Ocupa a largura total do pai (pageContainer) */
-  margin-top: 32px; /* Espaço entre o vídeo e as infos */
-  
-  background-color: #131116; /* Fundo do card de info */
-  border: 1px solid #2d2833;
-  border-radius: 24px;
-  padding: 32px;
-  
-  animation: slideUp 0.5s ease-out;
-}
-
-.infoHeader {
+/* Área de Info (Agrupa InfoCard e DescBox) (Célula [2,1]) */
+.infoArea {
+  grid-column: 1;
+  grid-row: 2;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 20px;
 }
 
-.titleGroup {
+/* ============================================================================
+   CARD DE INFORMAÇÕES DA AULA
+   ============================================================================ */
+
+.lessonInfoCard {
+  grid-column: 1;
+  grid-row: 2;
+
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 28px;
+  background: #18151c;
+  border: 1px solid #2a2532;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  /* Não precisa de margin-top, o gap do grid resolve */
+}
+
+/* Thumbnail da Aula */
+.lessonThumbnail {
+  width: 100px;
+  height: 100px;
+  min-width: 100px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2a2532 0%, #1e1a24 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lessonThumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnailPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2a2532 0%, #1e1a24 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+}
+
+/* Conteúdo Principal */
+.lessonMainInfo {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lessonLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #915bf5;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .lessonTitle {
-  font-size: 2.3rem;
-  font-weight: 500;
-  color: #fff;
-  line-height: 1.1;
-}
-
-.badges {
-  display: flex;
-  gap: 12px;
-}
-
-.badge {
-  background: #1f1d24;
-  color: #aaa;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.xpBadge {
-  background: rgba(145, 91, 245, 0.1);
-  color: #d8b4fe;
-  border: 1px solid rgba(145, 91, 245, 0.2);
-}
-
-.actionBtn {
-  background: #2d2833;
-  border: 1px solid #444;
-  color: #fff;
-  padding: 14px 28px;
-  border-radius: 12px;
+  font-size: 1.5rem;
   font-weight: 600;
-  cursor: pointer;
+  color: #fff;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.lessonSubtitle {
+  font-size: 0.95rem;
+  color: #a8a0b5;
+  margin: 0;
+}
+
+.lessonMeta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.lessonDate {
+  font-size: 0.85rem;
+  color: #6b6478;
+}
+
+.platformBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #00d4ff;
+  font-weight: 500;
+}
+
+.platformBadge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #00d4ff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+}
+
+/* Stats (Likes e XP) */
+.lessonStats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.likeButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.likeButton:hover {
+  background: rgba(255, 82, 82, 0.1);
+  transform: scale(1.05);
+}
+
+.likeButton.liked {
+  animation: likePopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.likeIcon {
+  color: #6b6478;
+  transition: all 0.3s;
+}
+
+.likeButton:hover .likeIcon {
+  color: #ff5252;
+}
+
+.likeButton.liked .likeIcon {
+  color: #ff5252;
+  filter: drop-shadow(0 0 8px rgba(255, 82, 82, 0.5));
+}
+
+.likeCount {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b6478;
+  transition: color 0.3s;
+}
+
+.likeButton:hover .likeCount,
+.likeButton.liked .likeCount {
+  color: #ff5252;
+}
+
+@keyframes likePopIn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.xpDisplay {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #d8b4fe 0%, #915bf5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Barra de Progresso da Aula */
+.lessonProgressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #2a2532;
+}
+
+.lessonProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #915bf5 0%, #c084fc 100%);
+  border-radius: 0 4px 4px 0;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 12px rgba(145, 91, 245, 0.5);
+}
+
+/* ============================================================================
+   BOX DE DESCRIÇÃO
+   ============================================================================ */
+
+.descriptionBox {
+  grid-column: 1 / -1; /* Começa na 1 e vai até a última (-1), ou seja, Full Width */
+  grid-row: 3;
+
+  padding: 28px;
+  background: #18151c;
+  border: 1px solid #2a2532;
+  border-radius: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  margin-top: 10px; /* Um respiro extra se quiser separar do bloco de cima */
+}
+
+.descriptionText {
+  flex: 1;
+  font-size: 0.95rem;
+  color: #9a91a8;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.certificateButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #915bf5 0%, #7c3aed 100%);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(145, 91, 245, 0.3);
+}
+
+.certificateButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(145, 91, 245, 0.4);
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+}
+
+.certificateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.certificateButtonIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================================
+   ESTADOS
+   ============================================================================ */
+
+.loading,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+  color: #666;
+  gap: 16px;
+}
+
+.loading p {
+  font-size: 1rem;
+  color: #888;
+}
+
+.emptyState p {
+  font-size: 1.1rem;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+.backBtn {
+  padding: 12px 24px;
+  background: #915bf5;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.actionBtn:hover:not(:disabled) {
-  background: #915bf5;
-  border-color: #915bf5;
+.backBtn:hover {
+  background: #7c3aed;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(145, 91, 245, 0.3);
 }
 
-.actionBtn.done {
-  background: rgba(74, 222, 128, 0.1);
-  border-color: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
-  cursor: default;
-}
-.actionBtn.done:hover { transform: none; box-shadow: none; }
-
-.divider {
-  width: 100%;
-  height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: 32px 0;
-}
-
-.descriptionBox {
-  width: 100%;
-  max-width: 100%; /* Garante que o texto use a largura total se necessário */
-}
-
-.descriptionBox p {
-  color: #ccc;
-  line-height: 1.7;
-  font-size: 1.05rem;
-}
-
-/* Loading States */
-.loading, .emptyState {
-  display: flex; align-items: center; justify-content: center;
-  height: 80vh; color: #666;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Responsividade */
-@media (max-width: 1100px) {
-  .pageContainer {
-    padding-right: 20px;
-  }
-  
-  .topSection {
-    flex-direction: column; /* Empilha vídeo e lista */
-    height: auto;
-    align-items: normal; /* Remove o stretch para altura natural */
-  }
-  
-  .playerWrapper {
-    width: 100%;
-    /* Aspect ratio continua mandando na altura */
-  }
-  
-  .sidebarWrapper {
-    width: 100%; /* Lista ocupa largura total embaixo do vídeo */
-    height: 500px; /* Altura fixa para permitir scroll interno */
-  }
-}
-
+/* Loading de Vídeo */
 .videoLoading {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: #000; /* Fundo preto igual ao player */
-    color: #fff;
-    gap: 16px;
-    z-index: 20;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #18151c;
+  color: #fff;
+  gap: 16px;
 }
 
 .videoLoading p {
-    font-size: 0.9rem;
-    color: #888;
-    animation: pulseText 1.5s infinite;
+  font-size: 0.9rem;
+  color: #888;
+  animation: pulseText 1.5s infinite;
+}
+
+/* ============================================================================
+   ANIMAÇÕES
+   ============================================================================ */
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulseText {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Classes de Animação */
+.animateIn {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.animateFadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* ============================================================================
+   RESPONSIVIDADE
+   ============================================================================ */
+
+@media (max-width: 1200px) {
+  .pageContainer {
+    padding-right: 24px;
+    padding-left: 180px;
+  }
+
+  /* Em telas médias/pequenas, quebra o grid para coluna única */
+  .contentGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .playerWrapper, .infoArea {
+    grid-column: 1;
+  }
+
+  /* Sidebar vai para baixo do vídeo em telas menores */
+  .sidebarWrapper {
+    grid-column: 1;
+    grid-row: 2; /* Fica abaixo do vídeo */
+    height: auto; /* Altura automática (não mais travada pelo vídeo) */
+    max-height: 500px;
+    width: 100%;
+  }
+  
+  .infoArea {
+    grid-row: 3; /* Informações ficam por último */
+  }
+
+  .lessonInfoCard {
+    flex-wrap: wrap;
+  }
+
+  .lessonStats {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 80px 16px 40px 80px;
+  }
+
+  .lessonInfoCard {
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lessonThumbnail {
+    width: 80px;
+    height: 80px;
+    min-width: 80px;
+  }
+
+  .lessonTitle {
+    font-size: 1.25rem;
+  }
+
+  .lessonStats {
+    flex-direction: row;
+    gap: 20px;
+    margin-top: 16px;
+  }
+
+  .xpDisplay {
+    font-size: 1.4rem;
+  }
+
+  .descriptionBox {
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .certificateButton {
+    width: 100%;
+    justify-content: center;
+  }
 }

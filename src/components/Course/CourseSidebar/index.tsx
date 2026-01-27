@@ -1,20 +1,13 @@
 // src/components/Course/CourseSidebar/index.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  PlayCircle, 
-  CheckCircle, 
-  Trophy, 
-  Award, 
-  Loader2,
-  Lock
-} from "lucide-react";
+import { Award, Loader2 } from "lucide-react";
 import { Module, Lesson } from "@/types";
 import styles from "./styles.module.css";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 // Contextos e Actions
 import { useAuth } from "@/context/AuthContext";
@@ -22,7 +15,7 @@ import { useToast } from "@/context/ToastContext";
 import { issueCertificateAction } from "@/app/actions/certificateActions";
 
 interface CourseSidebarProps {
-  courseId: string; // Necessário para o certificado
+  courseId: string;
   modules: Module[];
   activeLessonId?: string;
   activeModuleId?: string | null;
@@ -33,223 +26,180 @@ interface CourseSidebarProps {
   onSelectQuiz: (moduleId: string) => void;
 }
 
+// Formata duração em minutos de forma legível
+function formatMinutes(seconds: number | string | undefined): string {
+  if (!seconds) return "10 min";
+  const secs = typeof seconds === 'string' ? parseInt(seconds) : seconds;
+  if (isNaN(secs)) return "10 min";
+  const mins = Math.round(secs / 60);
+  return `${mins || 1} min`;
+}
+
 export default function CourseSidebar({
   courseId,
-  modules, 
-  activeLessonId, 
-  activeModuleId, 
+  modules,
+  activeLessonId,
+  activeModuleId,
   contentType,
-  completedLessons, 
+  completedLessons,
   completedQuizzes,
-  onSelectLesson, 
+  onSelectLesson,
   onSelectQuiz
 }: CourseSidebarProps) {
-  
+
   const { user } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lessonsRef = useRef<HTMLDivElement>(null);
 
-  // Controle de Módulos Abertos
-  const [openModules, setOpenModules] = useState<string[]>([]);
-  
   // Estado de Emissão do Certificado
   const [emitting, setEmitting] = useState(false);
 
-  // Efeito: Abrir automaticamente o módulo ativo ao carregar ou navegar
-  useEffect(() => {
-    if (activeModuleId && !openModules.includes(activeModuleId)) {
-      setOpenModules(prev => [...prev, activeModuleId]);
+  // Animação de entrada
+  useGSAP(() => {
+    if (containerRef.current) {
+      gsap.fromTo(containerRef.current,
+        { opacity: 0, x: 30 },
+        { opacity: 1, x: 0, duration: 0.5, ease: "power3.out", delay: 0.1 }
+      );
     }
-  }, [activeModuleId]);
+  }, []);
 
-  const toggleModule = (modId: string) => {
-    setOpenModules(prev => 
-      prev.includes(modId) ? prev.filter(id => id !== modId) : [...prev, modId]
-    );
-  };
+  // Animação das aulas (stagger)
+  useGSAP(() => {
+    if (lessonsRef.current) {
+      const lessonItems = lessonsRef.current.querySelectorAll(`.${styles.lessonRow}, .${styles.quizRow}`);
+      gsap.fromTo(lessonItems,
+        { opacity: 0, x: 20 },
+        { 
+          opacity: 1, 
+          x: 0, 
+          duration: 0.4, 
+          stagger: 0.05, 
+          ease: "power2.out",
+          delay: 0.3
+        }
+      );
+    }
+  }, [modules]);
 
   // --- LÓGICA DE PROGRESSO E CERTIFICADO ---
-  
-  // Calcula o total de aulas do curso (soma das aulas de todos os módulos)
   const totalLessons = useMemo(() => {
     return modules.reduce((acc, mod) => acc + mod.lessons.length, 0);
   }, [modules]);
 
-  // Calcula quantas aulas foram concluídas (interseção entre as aulas existentes e as completas)
-  // Isso evita bugs se uma aula for deletada mas o ID continuar no array de completedLessons
   const validCompletedCount = useMemo(() => {
     const allLessonIds = new Set(modules.flatMap(m => m.lessons.map(l => l.id)));
     return completedLessons.filter(id => allLessonIds.has(id)).length;
   }, [modules, completedLessons]);
 
+  const progressPercent = totalLessons > 0 ? (validCompletedCount / totalLessons) * 100 : 0;
   const isCourseCompleted = totalLessons > 0 && validCompletedCount === totalLessons;
+
+  // Pega o módulo atual
+  const currentModule = modules.find(m => m.id === activeModuleId) || modules[0];
+  const currentModuleIndex = modules.findIndex(m => m.id === currentModule?.id);
 
   // Handler para emitir certificado
   const handleIssueCertificate = async () => {
-    if(!user) return;
+    if (!user) return;
     setEmitting(true);
     try {
-       const token = await user.getIdToken();
-       const res = await issueCertificateAction(token, courseId);
-       
-       if(res.success) {
-           addToast(res.isNew ? "Certificado emitido com sucesso!" : "Certificado visualizado.", "success");
-           router.push("/dashboard/certificates");
-       } else {
-           addToast(res.message || "Erro ao emitir.", "error");
-       }
-    } catch(e) {
-       console.error(e);
-       addToast("Erro de conexão ao emitir certificado.", "error");
+      const token = await user.getIdToken();
+      const res = await issueCertificateAction(token, courseId);
+
+      if (res.success) {
+        addToast(res.isNew ? "Certificado emitido!" : "Visualizando certificado...", "success");
+        router.push("/dashboard/certificates");
+      } else {
+        addToast(res.message || "Erro ao emitir.", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      addToast("Erro de conexão.", "error");
     } finally {
-       setEmitting(false);
+      setEmitting(false);
     }
   };
 
+  // Handler com animação de click
+  const handleLessonClick = (lesson: Lesson, moduleId: string, e: React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    gsap.fromTo(target, 
+      { scale: 0.98 }, 
+      { scale: 1, duration: 0.2, ease: "back.out(1.7)" }
+    );
+    onSelectLesson(lesson, moduleId);
+  };
+
   return (
-    <div className={styles.sidebarContainer}>
-      {/* HEADER DA SIDEBAR */}
+    <div className={styles.sidebarContainer} ref={containerRef}>
+      {/* HEADER */}
       <div className={styles.header}>
-        <h3>Conteúdo do Curso</h3>
+        <h3 className={styles.headerTitle}>Conteúdo do Curso</h3>
         <span className={styles.progressText}>
-           {validCompletedCount}/{totalLessons} aulas concluídas
+          {validCompletedCount}/{totalLessons} aulas concluídas
         </span>
-        {/* Barra de progresso visual */}
-        <div style={{ width: '100%', height: 4, background: '#333', marginTop: 10, borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ 
-                width: `${totalLessons > 0 ? (validCompletedCount / totalLessons) * 100 : 0}%`, 
-                height: '100%', 
-                background: '#4ade80',
-                transition: 'width 0.5s ease'
-            }} />
+        <div className={styles.progressBar}>
+          <div
+            className={styles.progressFill}
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
 
-      {/* ÁREA DE SCROLL (Módulos e Aulas) */}
-      <div className={styles.scrollArea}>
-        {modules.map((mod, index) => {
-          const isOpen = openModules.includes(mod.id);
-          const isQuizDone = completedQuizzes.includes(mod.id);
-          const hasQuiz = true; // Assumindo que todo módulo tem prova, ou pode passar via prop
+      {/* INFO DO MÓDULO */}
+      {currentModule && (
+        <div className={styles.moduleInfo}>
+          <span className={styles.moduleIndex}>Módulo {currentModuleIndex + 1}</span>
+          <h4 className={styles.moduleTitle}>{currentModule.title}</h4>
+        </div>
+      )}
+
+      {/* LISTA DE AULAS (SEM ACCORDION) */}
+      <div className={styles.scrollArea} ref={lessonsRef}>
+        {currentModule?.lessons.map((lesson, idx) => {
+          const isActive = activeLessonId === lesson.id && contentType === 'lesson';
+          const isDone = completedLessons.includes(lesson.id);
+          
+          // Determina a cor do indicador
+          let indicatorClass = styles.indicatorPending;
+          if (isDone) indicatorClass = styles.indicatorCompleted;
+          else if (isActive) indicatorClass = styles.indicatorActive;
 
           return (
-            <div key={mod.id} className={`${styles.moduleItem} ${isOpen ? styles.moduleOpen : ''}`}>
-              {/* Header do Módulo */}
-              <button onClick={() => toggleModule(mod.id)} className={styles.moduleHeader}>
-                <div className={styles.moduleInfo}>
-                  <span className={styles.moduleIndex}>Módulo {index + 1}</span>
-                  <h4 className={styles.moduleTitle}>{mod.title}</h4>
-                </div>
-                <div className={styles.chevron}>
-                   {isOpen ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                </div>
-              </button>
-
-              {/* Lista de Aulas (Accordion) */}
-              <div className={`${styles.lessonsWrapper} ${isOpen ? styles.show : ''}`}>
-                 <div className={styles.lessonsInner}>
-                    {mod.lessons.map((lesson) => {
-                       const isActive = activeLessonId === lesson.id && contentType === 'lesson';
-                       const isDone = completedLessons.includes(lesson.id);
-
-                       return (
-                         <div 
-                           key={lesson.id} 
-                           onClick={() => onSelectLesson(lesson, mod.id)}
-                           className={`${styles.lessonRow} ${isActive ? styles.active : ''} ${isDone ? styles.done : ''}`}
-                         >
-                            <div className={styles.lessonIcon}>
-                               {isActive ? (
-                                  <div className={styles.pulsingDot} />
-                               ) : isDone ? (
-                                  <CheckCircle size={16} className={styles.checkIcon} />
-                               ) : (
-                                  <PlayCircle size={16} className={styles.playIcon} />
-                               )}
-                            </div>
-                            <div className={styles.lessonText}>
-                               <span className={styles.lessonTitleText}>{lesson.title}</span>
-                               <span className={styles.lessonMeta}>
-                                   {typeof lesson.duration === 'string' ? lesson.duration : "00:00"} • {lesson.xpReward} XP
-                               </span>
-                            </div>
-                         </div>
-                       )
-                    })}
-
-                    {/* Link para a Prova do Módulo */}
-                    {hasQuiz && (
-                        <div 
-                           onClick={() => onSelectQuiz(mod.id)}
-                           className={`${styles.quizRow} ${contentType === 'quiz' && activeModuleId === mod.id ? styles.active : ''}`}
-                        >
-                           <div className={styles.quizIcon}>
-                              <Trophy size={16} color={isQuizDone ? "#fbbf24" : "#888"} />
-                           </div>
-                           <div className={styles.lessonText}>
-                              <span className={styles.lessonTitleText}>Prova do Módulo</span>
-                              <span className={styles.lessonMeta}>
-                                  {isQuizDone ? "Aprovado" : "Avaliação Final"}
-                              </span>
-                           </div>
-                        </div>
-                    )}
-                 </div>
+            <div
+              key={lesson.id}
+              onClick={(e) => handleLessonClick(lesson, currentModule.id, e)}
+              className={`${styles.lessonRow} ${isActive ? styles.active : ''}`}
+            >
+              {/* Indicador Lateral */}
+              <div className={`${styles.lessonIndicator} ${indicatorClass}`} />
+              
+              {/* Card da Aula */}
+              <div className={styles.lessonCard}>
+                <span className={styles.lessonMeta}>
+                  {formatMinutes(lesson.duration)} • {lesson.xpReward} XP
+                </span>
               </div>
             </div>
           );
         })}
-      </div>
 
-      {/* CARD DE CERTIFICADO (Fixo no rodapé se completou) */}
-      {isCourseCompleted && (
-        <div style={{ padding: 20, borderTop: '1px solid #2d2833', background: '#131116' }}>
-            <div style={{ 
-                background: 'linear-gradient(135deg, rgba(145, 91, 245, 0.15), rgba(145, 91, 245, 0.05))',
-                border: '1px solid rgba(145, 91, 245, 0.4)',
-                borderRadius: 16,
-                padding: 16,
-                textAlign: 'center',
-                boxShadow: '0 -4px 20px rgba(0,0,0,0.2)'
-            }}>
-                <div style={{ marginBottom: 10, color: '#d8b4fe', display:'flex', justifyContent:'center' }}>
-                    <Award size={36} strokeWidth={1.5} />
-                </div>
-                <h4 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 4, fontWeight: 600 }}>
-                    Curso Concluído!
-                </h4>
-                <p style={{ color: '#ccc', fontSize: '0.8rem', marginBottom: 16, lineHeight: 1.4 }}>
-                    Parabéns pelo empenho. Resgate seu certificado oficial agora.
-                </p>
-                
-                <button 
-                    onClick={handleIssueCertificate}
-                    disabled={emitting}
-                    style={{
-                        width: '100%', 
-                        padding: '12px', 
-                        borderRadius: 10,
-                        background: '#915bf5', 
-                        color: '#fff', 
-                        fontWeight: 600, 
-                        fontSize: '0.9rem',
-                        cursor: 'pointer', 
-                        border: 'none',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        gap: 8,
-                        transition: 'transform 0.2s, background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#7c3aed'}
-                    onMouseOut={(e) => e.currentTarget.style.background = '#915bf5'}
-                >
-                    {emitting ? <Loader2 className={styles.spin} size={18}/> : <Award size={18}/>}
-                    {emitting ? "Emitindo..." : "Resgatar Certificado"}
-                </button>
+        {/* Prova do Módulo */}
+        {currentModule && (
+          <div
+            onClick={() => onSelectQuiz(currentModule.id)}
+            className={`${styles.quizRow} ${contentType === 'quiz' && activeModuleId === currentModule.id ? styles.active : ''}`}
+          >
+            <div className={`${styles.quizIndicator} ${completedQuizzes.includes(currentModule.id) ? styles.indicatorCompleted : ''}`} />
+            <div className={styles.quizCard}>
+              <span className={styles.quizTitle}>Prova do Módulo</span>
             </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
