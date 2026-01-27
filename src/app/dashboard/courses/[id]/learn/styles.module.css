@@ -64,26 +64,22 @@
 .lessonInfoCard {
   grid-column: 1;
   grid-row: 2;
-
   display: flex;
   align-items: center;
   gap: 20px;
   padding: 24px 28px;
-  background: #18151c;
-  border: 1px solid #2a2532;
   border-radius: 20px;
   position: relative;
   overflow: hidden;
-  /* Não precisa de margin-top, o gap do grid resolve */
 }
 
 /* Thumbnail da Aula */
 .lessonThumbnail {
   width: 100px;
   height: 100px;
-  min-width: 100px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #2a2532 0%, #1e1a24 100%);
+  min-width: 80px;
+  border-radius: 12px;
+  background: #2a2532;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,11 +95,11 @@
 .thumbnailPlaceholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #2a2532 0%, #1e1a24 100%);
+  background: #2a2532;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #444;
+  color: #3d3848;
 }
 
 /* Conteúdo Principal */
@@ -111,42 +107,35 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
-.lessonLabel {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #915bf5;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
 .lessonTitle {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.8rem;
+  font-weight: 500;
   color: #fff;
-  line-height: 1.2;
+  line-height: 1.3;
   margin: 0;
 }
 
 .lessonSubtitle {
-  font-size: 0.95rem;
-  color: #a8a0b5;
-  margin: 0;
+  font-size: 1.1rem;
+  color: #9C9C9C;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 .lessonMeta {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 4px;
+  gap: 60px;
+  margin-top: 2px;
 }
 
 .lessonDate {
-  font-size: 0.85rem;
-  color: #6b6478;
+  font-size: 0.9rem;
+  color: #9C9C9C;
 }
 
 .platformBadge {
@@ -172,24 +161,24 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 4px;
   margin-left: auto;
 }
 
 .likeButton {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 12px;
+  padding: 8px 8px;
+  border-radius: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .likeButton:hover {
-  background: rgba(255, 82, 82, 0.1);
+  background: rgba(202, 141, 255, 0.1);
   transform: scale(1.05);
 }
 
@@ -198,29 +187,30 @@
 }
 
 .likeIcon {
-  color: #6b6478;
+  color: #CA8DFF;
   transition: all 0.3s;
+
 }
 
 .likeButton:hover .likeIcon {
-  color: #ff5252;
+  color: #CA8DFF;
 }
 
 .likeButton.liked .likeIcon {
-  color: #ff5252;
-  filter: drop-shadow(0 0 8px rgba(255, 82, 82, 0.5));
+  color: #CA8DFF;
+  filter: drop-shadow(0 0 8px rgba(202, 141, 255, 0.5));
 }
 
 .likeCount {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #6b6478;
+  color: #CA8DFF;
   transition: color 0.3s;
 }
 
 .likeButton:hover .likeCount,
 .likeButton.liked .likeCount {
-  color: #ff5252;
+  color: #CA8DFF;
 }
 
 @keyframes likePopIn {
@@ -230,31 +220,14 @@
 }
 
 .xpDisplay {
-  font-size: 1.8rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #d8b4fe 0%, #915bf5 100%);
+  font-size: 2rem;
+  font-weight: 600;
+  background-color: #fff;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Barra de Progresso da Aula */
-.lessonProgressBar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: #2a2532;
-}
-
-.lessonProgressFill {
-  height: 100%;
-  background: linear-gradient(90deg, #915bf5 0%, #c084fc 100%);
-  border-radius: 0 4px 4px 0;
-  transition: width 0.5s ease;
-  box-shadow: 0 0 12px rgba(145, 91, 245, 0.5);
-}
 
 /* ============================================================================
    BOX DE DESCRIÇÃO
@@ -278,32 +251,31 @@
 .descriptionText {
   flex: 1;
   font-size: 0.95rem;
-  color: #9a91a8;
+  color: #9C9C9C;
   line-height: 1.7;
   margin: 0;
+  max-width: 800px;
 }
 
 .certificateButton {
+  background-color: #CA8DFF; /* Roxo da imagem */
+  color: #fff;
+  border: none;
+  padding: 8px 8px 8px 20px;
+  border-radius: 99px;
+  font-size: 1.1rem;
+  font-weight: 400;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #915bf5 0%, #7c3aed 100%);
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 600;
+  gap: 16px;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(145, 91, 245, 0.3);
+  transition: transform 0.2s;
+  box-shadow: 0 0 30px rgba(202, 141, 255, 0.3);
 }
 
 .certificateButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(145, 91, 245, 0.4);
-  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+
 }
 
 .certificateButton:disabled {
@@ -315,7 +287,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: #020202;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -482,13 +454,13 @@
   }
 
   .lessonThumbnail {
-    width: 80px;
-    height: 80px;
-    min-width: 80px;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
   }
 
   .lessonTitle {
-    font-size: 1.25rem;
+    font-size: 1rem;
   }
 
   .lessonStats {
@@ -498,7 +470,7 @@
   }
 
   .xpDisplay {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
   }
 
   .descriptionBox {

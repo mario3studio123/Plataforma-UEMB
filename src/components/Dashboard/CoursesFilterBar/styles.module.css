@@ -1,16 +1,15 @@
 .barContainer {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     margin-bottom: 40px;
-    gap: 20px;
+    gap: 16px;
     flex-wrap: wrap;
 }
 
 .searchWrapper {
     position: relative;
-    flex: 1;
-    min-width: 300px;
+    width: 350px;
+    min-width: 200px;
 }
 
 .searchIcon {
@@ -23,19 +22,23 @@
 
 .searchInput {
     width: 100%;
-    background-color: #1a1620;
-    border: 1px solid #2d2833;
-    padding: 14px 14px 14px 48px;
-    border-radius: 12px;
+    background-color: #18151c;
+    border: 1px solid #2a2532;
+    padding: 12px 14px 12px 48px;
+    border-radius: 99px;
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     outline: none;
     transition: all 0.2s;
 }
 
+.searchInput::placeholder {
+    color: #666;
+}
+
 .searchInput:focus {
     border-color: #915bf5;
-    box-shadow: 0 0 0 4px rgba(145, 91, 245, 0.1);
+    box-shadow: 0 0 0 3px rgba(145, 91, 245, 0.1);
 }
 
 .filtersWrapper {
@@ -45,12 +48,13 @@
 
 .filterPill {
     background: transparent;
-    border: 1px solid #2d2833;
-    color: #888;
-    padding: 8px 16px;
+    border: 1px solid #3d3848;
+    color: #a8a0b5;
+    padding: 10px 30px;
     border-radius: 99px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     transition: all 0.2s;
 }
 
@@ -60,14 +64,14 @@
 }
 
 .filterPill.active {
-    background-color: #915bf5;
-    border-color: #915bf5;
+    background-color: #2d2838;
+    border-color: #2d2838;
     color: #fff;
 }
 
 .spin {
     animation: spin 1s linear infinite;
-    color: var(--primary, #CA8DFF); /* Roxo quando carregando */
+    color: var(--primary, #CA8DFF);
 }
 
 @keyframes spin { 

@@ -1,4 +1,4 @@
-import styles from "./styles.module.css"; // Vamos criar um CSS simples pra ele
+import styles from "./styles.module.css";
 
 export default function CourseCardSkeleton() {
   return (
@@ -8,6 +8,7 @@ export default function CourseCardSkeleton() {
         <div className={`${styles.skeletonTitle} ${styles.shimmer}`} />
         <div className={`${styles.skeletonBadge} ${styles.shimmer}`} />
       </div>
+      <div className={`${styles.skeletonFooter} ${styles.shimmer}`} />
     </div>
   );
 }

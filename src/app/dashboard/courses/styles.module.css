@@ -4,7 +4,7 @@
   
   background-color: #0f0d11; 
   
-  padding-top: 40px;    
+  padding-top: 120px;    
   padding-right: 40px;
   padding-bottom: 80px;
   padding-left: 0;
@@ -14,55 +14,50 @@
   z-index: 1;
 }
 
-/* ... o resto do CSS dos cards continua idêntico ... */
-
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   margin-bottom: 40px;
 }
 
+.pageTitle {
+  font-size: 3rem;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: -1px;
+  margin: 0;
+}
 
 .pageSubtitle {
   color: #888;
   font-size: 1rem;
+  margin-top: 16px;
 }
 
-.floatingBtn {
-  position: fixed; /* Fixa na tela */
-  bottom: 40px;
-  right: 40px;
-  z-index: 50; /* Acima do conteúdo, abaixo de modais/toasts */
-  
-  background-color: #915bf5; /* Roxo Primário */
-  color: #fff;
-  border: none;
-  
+/* Botão Novo Curso no Header */
+.newCourseBtn {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-radius: 99px; /* Pílula arredondada */
-  
-  font-size: 1rem;
+  gap: 10px;
+  padding: 12px 20px;
+  background-color: #CA8DFF;
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  
-  /* Sombra com brilho roxo */
-  box-shadow: 0 10px 30px rgba(145, 91, 245, 0.4);
-  
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efeito Bouncy suave */
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(145, 91, 245, 0.3);
+  margin-right: 50px;
 }
 
-.floatingBtn:hover {
-  background-color: #a875ff;
-  transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 15px 40px rgba(145, 91, 245, 0.6);
-}
-
-.floatingBtn:active {
-  transform: translateY(0) scale(0.95);
+.newCourseBtn:hover {
+  background-color: #a370ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(145, 91, 245, 0.4);
 }
 
 /* --- GRID LAYOUT --- */

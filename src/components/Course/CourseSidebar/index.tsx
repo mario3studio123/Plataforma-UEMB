@@ -97,10 +97,6 @@ export default function CourseSidebar({
   const progressPercent = totalLessons > 0 ? (validCompletedCount / totalLessons) * 100 : 0;
   const isCourseCompleted = totalLessons > 0 && validCompletedCount === totalLessons;
 
-  // Pega o módulo atual
-  const currentModule = modules.find(m => m.id === activeModuleId) || modules[0];
-  const currentModuleIndex = modules.findIndex(m => m.id === currentModule?.id);
-
   // Handler para emitir certificado
   const handleIssueCertificate = async () => {
     if (!user) return;
@@ -149,56 +145,57 @@ export default function CourseSidebar({
         </div>
       </div>
 
-      {/* INFO DO MÓDULO */}
-      {currentModule && (
-        <div className={styles.moduleInfo}>
-          <span className={styles.moduleIndex}>Módulo {currentModuleIndex + 1}</span>
-          <h4 className={styles.moduleTitle}>{currentModule.title}</h4>
-        </div>
-      )}
-
-      {/* LISTA DE AULAS (SEM ACCORDION) */}
+      {/* LISTA DE MÓDULOS E AULAS */}
       <div className={styles.scrollArea} ref={lessonsRef}>
-        {currentModule?.lessons.map((lesson, idx) => {
-          const isActive = activeLessonId === lesson.id && contentType === 'lesson';
-          const isDone = completedLessons.includes(lesson.id);
-          
-          // Determina a cor do indicador
-          let indicatorClass = styles.indicatorPending;
-          if (isDone) indicatorClass = styles.indicatorCompleted;
-          else if (isActive) indicatorClass = styles.indicatorActive;
+        {modules.map((module, moduleIndex) => (
+          <React.Fragment key={module.id}>
+            {/* INFO DO MÓDULO */}
+            <div className={styles.moduleInfo}>
+              <span className={styles.moduleIndex}>Módulo {moduleIndex + 1}</span>
+              <h4 className={styles.moduleTitle}>{module.title}</h4>
+            </div>
 
-          return (
-            <div
-              key={lesson.id}
-              onClick={(e) => handleLessonClick(lesson, currentModule.id, e)}
-              className={`${styles.lessonRow} ${isActive ? styles.active : ''}`}
-            >
-              {/* Indicador Lateral */}
-              <div className={`${styles.lessonIndicator} ${indicatorClass}`} />
+            {/* AULAS DO MÓDULO */}
+            {module.lessons.map((lesson, idx) => {
+              const isActive = activeLessonId === lesson.id && contentType === 'lesson';
+              const isDone = completedLessons.includes(lesson.id);
               
-              {/* Card da Aula */}
-              <div className={styles.lessonCard}>
-                <span className={styles.lessonMeta}>
-                  {formatMinutes(lesson.duration)} • {lesson.xpReward} XP
-                </span>
+              // Determina a cor do indicador
+              let indicatorClass = styles.indicatorPending;
+              if (isDone) indicatorClass = styles.indicatorCompleted;
+              else if (isActive) indicatorClass = styles.indicatorActive;
+
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={(e) => handleLessonClick(lesson, module.id, e)}
+                  className={`${styles.lessonRow} ${isActive ? styles.active : ''}`}
+                >
+                  {/* Indicador Lateral */}
+                  <div className={`${styles.lessonIndicator} ${indicatorClass}`} />
+                  
+                  {/* Card da Aula */}
+                  <div className={styles.lessonCard}>
+                    <span className={styles.lessonMeta}>
+                      {formatMinutes(lesson.duration)} • {lesson.xpReward} XP
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Prova do Módulo */}
+            <div
+              onClick={() => onSelectQuiz(module.id)}
+              className={`${styles.quizRow} ${contentType === 'quiz' && activeModuleId === module.id ? styles.active : ''}`}
+            >
+              <div className={`${styles.quizIndicator} ${completedQuizzes.includes(module.id) ? styles.indicatorCompleted : ''}`} />
+              <div className={styles.quizCard}>
+                <span className={styles.quizTitle}>Prova do Módulo</span>
               </div>
             </div>
-          );
-        })}
-
-        {/* Prova do Módulo */}
-        {currentModule && (
-          <div
-            onClick={() => onSelectQuiz(currentModule.id)}
-            className={`${styles.quizRow} ${contentType === 'quiz' && activeModuleId === currentModule.id ? styles.active : ''}`}
-          >
-            <div className={`${styles.quizIndicator} ${completedQuizzes.includes(currentModule.id) ? styles.indicatorCompleted : ''}`} />
-            <div className={styles.quizCard}>
-              <span className={styles.quizTitle}>Prova do Módulo</span>
-            </div>
-          </div>
-        )}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

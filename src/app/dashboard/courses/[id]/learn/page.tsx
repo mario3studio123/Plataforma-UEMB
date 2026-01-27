@@ -444,7 +444,6 @@ useGSAP(() => {
 
               {/* Info Principal */}
               <div className={styles.lessonMainInfo}>
-                <span className={styles.lessonLabel}>Aula</span>
                 <h2 className={styles.lessonTitle}>{activeLesson.title}</h2>
                 <p className={styles.lessonSubtitle}>
                   {currentDescription?.substring(0, 60) || "Conteúdo da aula"}
@@ -464,9 +463,9 @@ useGSAP(() => {
                   disabled={likesLoading}
                 >
                   <Heart
-                    size={22}
+                    size={26}
                     className={styles.likeIcon}
-                    fill={userLiked ? "#ff5252" : "none"}
+                    fill={userLiked ? "#CA8DFF" : "none"}
                   />
                   <span className={styles.likeCount}>{formatLikeCount(likeCount)}</span>
                 </button>
@@ -482,17 +481,10 @@ useGSAP(() => {
               </div>
           </div>
         )}
-
-        {/* 4. CAIXA DE DESCRIÇÃO
-            Posição: Coluna 1 até o final (-1), Linha 3
-            Fica abaixo de tudo, ocupando a largura total (Full Width)
-        */}
         {activeLesson && contentType === 'lesson' && (
           <div className={styles.descriptionBox} ref={descBoxRef}>
               <p className={styles.descriptionText}>
-                {currentDescription || "Esta aula faz parte do seu aprendizado na plataforma UEMB. Continue assistindo para ganhar XP e desbloquear novas conquistas."}
-              </p>
-
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
               {isCourseCompleted && (
                 <button
                   className={styles.certificateButton}

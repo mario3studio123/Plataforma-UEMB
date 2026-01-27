@@ -25,17 +25,18 @@
 .header {
   padding: 30px 30px 26px;
   flex-shrink: 0;
+
 }
 
 .headerTitle {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 400;
   color: #fff;
-  margin: 0 0 6px 0;
+  margin: 0 0 8px 0;
 }
 
 .progressText {
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: #7a7189;
   display: block;
   margin-bottom: 10px;
@@ -43,7 +44,7 @@
 
 .progressBar {
   width: 100%;
-  height: 4px;
+  height: 6px;
   background: #2a2532;
   border-radius: 2px;
   overflow: hidden;
@@ -51,7 +52,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #c084fc 0%, #a855f7 100%);
+  background-color: #CA8DFF;
   border-radius: 2px;
   transition: width 0.5s ease;
 }
@@ -61,15 +62,19 @@
    ============================================================================ */
 
 .moduleInfo {
-  padding: 30px 30px 26px;
+  padding: 20px 0 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 12px;
+}
+
+.moduleInfo:first-child {
+  padding-top: 0;
 }
 
 .moduleIndex {
-  font-size: 0.7rem;
+  font-size: 1rem;
   color: #6b6478;
-  text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.5px;
   display: block;
   margin-bottom: 4px;
@@ -77,9 +82,9 @@
 }
 
 .moduleTitle {
-  font-size: 1rem;
+  font-size: 1.3rem;
   color: #fff;
-  font-weight: 600;
+  font-weight: 400;
   margin: 0;
 }
 
@@ -113,6 +118,7 @@
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.2s ease;
+  
 }
 
 .lessonRow:hover {
@@ -135,23 +141,23 @@
 
 /* Estados do Indicador */
 .indicatorPending {
-  background: #3d3848;
+  background-color: #CA8DFF;
 } 
 
 .indicatorActive {
-  background: linear-gradient(180deg, #CA8DFF 0%, #CA8DFF 100%);
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+  background: #CA8DFF;
+  box-shadow: 0 0 12px rgba(202, 141, 255, 0.4);
 }
 
 .indicatorCompleted {
-  background: linear-gradient(180deg, #8824fb 0%, #CA8DFF 100%);
-  box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+  background-color: #CA8DFF;
+  box-shadow: 0 0 8px rgba(202, 141, 255, 0.3);
 }
 
-/* Card da Aula */
 .lessonCard {
   flex: 1;
-  background: #2d2838;
+  background: linear-gradient(90deg, rgb(42, 37, 50) 0%, rgba(104, 79, 151, 0.5) 100%);
+  box-shadow: inset 0 0 10px 2px rgba(104, 79, 151, 0.5);
   padding: 12px 16px;
   border-radius: 0 16px 16px 0;
   display: flex;
@@ -160,19 +166,46 @@
   transition: background 0.2s ease;
 }
 
-.lessonRow:hover .lessonCard {
-  background: #352f42;
-}
-
-.lessonRow.active .lessonCard {
-  background: #3d3650;
-  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.3);
-}
 
 .lessonMeta {
   font-size: 0.85rem;
   color: #a8a0b5;
   font-weight: 500;
+}
+
+.sidebarItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px 12px 28px; /* Padding extra na esquerda para o detalhe */
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  overflow: hidden; /* Garante que o detalhe não escape da curva */
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+/* O Detalhe Colorido (Roxo para Aulas) */
+.sidebarItem::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 14px; /* Largura do detalhe da imagem */
+  background-color: #CA8DFF; /* Roxo da Uemb */
+  border-radius: 0 4px 4px 0; /* Leve arredondamento na ponta interna se desejar */
+}
+
+/* Variação para a Prova (Amarelo) */
+.sidebarItemQuiz::before {
+  background-color: #FFB800; /* Amarelo da imagem */
+}
+
+/* Efeito de Hover/Ativo (Opcional, mantém o layout aprovado) */
+.sidebarItem:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ============================================================================
@@ -184,10 +217,16 @@
   align-items: stretch;
   gap: 0;
   margin-top: 8px;
+  margin-bottom: 24px;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: 16px;
+  
   overflow: hidden;
   transition: transform 0.2s ease;
+}
+
+.quizRow:last-child {
+  margin-bottom: 0;
 }
 
 .quizRow:hover {
@@ -197,40 +236,39 @@
 .quizIndicator {
   width: 16px;
   min-height: 50px;
-  border-radius: 6px 0 0 6px;
-  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 16px 0 0 16px;
+  background: #ffb619;
   flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .quizIndicator.indicatorCompleted {
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+  background: linear-gradient(180deg, #ffb619 0%, #ffb619 100%);
+  box-shadow: 0 0 12px rgba(212, 168, 75, 0.4);
 }
 
 .quizCard {
   flex: 1;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: linear-gradient(90deg, rgb(42, 37, 50) 0%, rgba(104, 79, 151, 0.5) 100%);
+  box-shadow: inset 0 0 10px 2px rgba(104, 79, 151, 0.5);
   padding: 12px 16px;
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 16px 16px 0;
   display: flex;
   align-items: center;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
-.quizRow:hover .quizCard {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%);
-  border-color: rgba(251, 191, 36, 0.35);
-}
+
 
 .quizRow.active .quizCard {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.2) 100%);
-  border-color: rgba(251, 191, 36, 0.5);
+  background: #3d3650;
+  box-shadow: inset 0 0 0 1px rgba(212, 168, 75, 0.3);
 }
 
 .quizTitle {
   font-size: 0.85rem;
-  color: #fbbf24;
-  font-weight: 600;
+  color: #a8a0b5;
+  font-weight: 500;
 }
 
 /* ============================================================================
