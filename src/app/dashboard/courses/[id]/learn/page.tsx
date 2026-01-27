@@ -254,6 +254,9 @@ function CoursePlayerContent() {
             <div className={styles.infoHeader}>
                <div className={styles.titleGroup}>
                   <h1 className={styles.lessonTitle}>{activeLesson.title}</h1>
+                  <div className={styles.descriptionBox}>
+                    <p>{currentDescription || "Sem descrição disponível para esta aula."}</p>
+                  </div>
                   <div className={styles.badges}>
                       <span className={styles.badge}> 
                         {typeof activeLesson.duration === 'number' 
@@ -276,9 +279,6 @@ function CoursePlayerContent() {
                </button>
             </div>
             <div className={styles.divider} />
-            <div className={styles.descriptionBox}>
-                <p>{currentDescription || "Sem descrição disponível para esta aula."}</p>
-            </div>
         </section>
       )}
     </div>

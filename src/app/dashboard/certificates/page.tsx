@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthContext";
 import { Award, Download, Calendar, Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSidebar } from "@/context/SidebarContext";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 
 // Importações do PDF
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { CertificateTemplate } from "@/components/Certificate/CertificateTemplate";
+import { SmartCertificate } from "@/components/Certificate/DynamicCertificate";
+import { CertificateTemplate, CertificateRenderData } from "@/types/certificate";
+import { getUserCertificatesAction } from "@/app/actions/certificateActions";
 
 interface Certificate {
     id: string;
@@ -21,43 +22,47 @@ interface Certificate {
     validationCode: string;
     totalHours: string;
     userName: string;
+    modulesCount?: number;
+    companyName?: string;
 }
 
 export default function CertificatesPage() {
     const { user } = useAuth();
     const { isExpanded } = useSidebar();
+    const { addToast } = useToast();
+    
     const [certificates, setCertificates] = useState<Certificate[]>([]);
+    const [activeTemplate, setActiveTemplate] = useState<CertificateTemplate | null>(null);
     const [loading, setLoading] = useState(true);
     
     const containerRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
 
-    // 1. Busca Certificados
+    // 1. Busca Certificados e Template Ativo
     useEffect(() => {
         if (!user) return;
-        const fetchCerts = async () => {
+        
+        const fetchData = async () => {
             try {
-                const q = query(
-                    collection(db, "certificates"), 
-                    where("userId", "==", user.uid),
-                    // orderBy requer índice composto com userId, crie se o console pedir
-                    // Por enquanto faremos sort no client para evitar erro de índice imediato
-                );
-                const snap = await getDocs(q);
-                const data = snap.docs.map(d => d.data() as Certificate);
+                const token = await user.getIdToken();
+                const result = await getUserCertificatesAction(token);
                 
-                // Ordenação Client-Side (Mais recente primeiro)
-                data.sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
-                
-                setCertificates(data);
+                if (result.success) {
+                    setCertificates(result.certificates as Certificate[]);
+                    setActiveTemplate(result.activeTemplate as CertificateTemplate | null);
+                } else {
+                    addToast(result.message || "Erro ao buscar certificados", "error");
+                }
             } catch (error) {
                 console.error("Erro ao buscar certificados:", error);
+                addToast("Erro ao carregar certificados", "error");
             } finally {
                 setLoading(false);
             }
         };
-        fetchCerts();
-    }, [user]);
+        
+        fetchData();
+    }, [user, addToast]);
 
     // 2. Animação
     useGSAP(() => {
@@ -75,6 +80,24 @@ export default function CertificatesPage() {
             });
         }
     }, [isExpanded, loading]);
+
+    // 3. Helper para preparar dados do certificado
+    const prepareCertificateData = (cert: Certificate): CertificateRenderData => {
+        const completionDate = new Date(cert.issuedAt).toLocaleDateString('pt-BR');
+        const issueDate = new Date(cert.issuedAt).toLocaleDateString('pt-BR');
+        
+        return {
+            studentName: cert.userName,
+            courseTitle: cert.courseTitle,
+            completionDate,
+            totalHours: cert.totalHours,
+            validationCode: cert.validationCode,
+            modulesCount: cert.modulesCount || 0,
+            instructorName: "Universidade da Embalagem",
+            issueDate,
+            companyName: cert.companyName || "Universidade da Embalagem",
+        };
+    };
 
     return (
         <div className={styles.container} ref={containerRef}>
@@ -96,44 +119,53 @@ export default function CertificatesPage() {
                 </div>
             ) : (
                 <div className={styles.grid} ref={gridRef}>
-                    {certificates.map((cert) => (
-                        <div key={cert.id} className={styles.certCard}>
-                            <div className={styles.certRibbon} />
-                            
-                            <div className={styles.certContent}>
-                                <div className={styles.iconWrapper}>
-                                    <Award size={32} color="#fff" />
-                                </div>
-                                <h3 className={styles.courseTitle}>{cert.courseTitle}</h3>
+                    {certificates.map((cert) => {
+                        const renderData = prepareCertificateData(cert);
+                        
+                        return (
+                            <div key={cert.id} className={styles.certCard}>
+                                <div className={styles.certRibbon} />
                                 
-                                <div className={styles.metaRow}>
-                                    <Calendar size={14} />
-                                    <span>{new Date(cert.issuedAt).toLocaleDateString('pt-BR')}</span>
-                                    <span className={styles.dot}>•</span>
-                                    <span>{cert.totalHours}</span>
-                                </div>
+                                <div className={styles.certContent}>
+                                    <div className={styles.iconWrapper}>
+                                        <Award size={32} color="#fff" />
+                                    </div>
+                                    <h3 className={styles.courseTitle}>{cert.courseTitle}</h3>
+                                    
+                                    <div className={styles.metaRow}>
+                                        <Calendar size={14} />
+                                        <span>{new Date(cert.issuedAt).toLocaleDateString('pt-BR')}</span>
+                                        <span className={styles.dot}>•</span>
+                                        <span>{cert.totalHours}</span>
+                                    </div>
 
-                                <div className={styles.codeBox}>
-                                    ID: {cert.validationCode}
-                                </div>
+                                    <div className={styles.codeBox}>
+                                        ID: {cert.validationCode}
+                                    </div>
 
-                                {/* Botão de Download PDF */}
-                                <PDFDownloadLink
-                                    document={<CertificateTemplate data={cert} />}
-                                    fileName={`Certificado-${cert.courseTitle.replace(/\s+/g, '-')}.pdf`}
-                                    className={styles.downloadBtn}
-                                >
-                                    {/* @ts-ignore - Propriedade loading injetada pelo PDFDownloadLink */}
-                                    {({ loading: pdfLoading }) => (
-                                        <>
-                                            {pdfLoading ? <Loader2 size={16} className={styles.spin}/> : <Download size={16} />}
-                                            {pdfLoading ? "Gerando..." : "Baixar PDF"}
-                                        </>
-                                    )}
-                                </PDFDownloadLink>
+                                    {/* Botão de Download PDF com Template Dinâmico */}
+                                    <PDFDownloadLink
+                                        document={
+                                            <SmartCertificate 
+                                                template={activeTemplate} 
+                                                data={renderData} 
+                                            />
+                                        }
+                                        fileName={`Certificado-${cert.courseTitle.replace(/\s+/g, '-')}.pdf`}
+                                        className={styles.downloadBtn}
+                                    >
+                                        {/* @ts-ignore - Propriedade loading injetada pelo PDFDownloadLink */}
+                                        {({ loading: pdfLoading }) => (
+                                            <>
+                                                {pdfLoading ? <Loader2 size={16} className={styles.spin}/> : <Download size={16} />}
+                                                {pdfLoading ? "Gerando..." : "Baixar PDF"}
+                                            </>
+                                        )}
+                                    </PDFDownloadLink>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

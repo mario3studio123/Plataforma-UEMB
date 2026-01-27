@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Home, BookOpen, BarChart2, Award, FileEdit, MessageSquare, 
-  ShoppingBag, Settings, HelpCircle, ChevronLeft, ChevronRight, LogOut
+  ShoppingBag, Settings, HelpCircle, ChevronLeft, ChevronRight, LogOut,
+  Palette, FolderPlus
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
@@ -25,8 +26,13 @@ const mainMenuItems = [
   { icon: ShoppingBag, label: "Loja", path: "/dashboard/shop" },
 ];
 
+// Itens de menu exclusivos para admin
+const adminMenuItems = [
+    { icon: Settings, label: "Configurações", path: "/dashboard/settings" },
+  { icon: Palette, label: "Criar Certificado", path: "/dashboard/admin/certificates" },
+];
+
 const bottomMenuItems = [
-  { icon: Settings, label: "Configurações", path: "/dashboard/settings" },
   { icon: HelpCircle, label: "Informações", path: "/dashboard/info" },
 ];
 
@@ -171,11 +177,40 @@ export default function Sidebar() {
             })}
           </nav>
           
+          {/* MENU ADMIN - Só aparece para admins */}
+          {(profile?.role === 'admin' || profile?.role === 'master') && (
+            <>
+              <div className={styles.divider} />
+              <nav className={styles.nav}>
+                {adminMenuItems.map((item, i) => {
+                  const refIndex = mainMenuItems.length + i;
+                  const isActive = pathname === item.path || pathname?.startsWith(item.path);
+                  return (
+                    <Link key={item.path} href={item.path} className={styles.linkWrapper}>
+                      <div className={`${styles.link} ${isActive ? styles.active : ""}`} title={!isExpanded ? item.label : ""}>
+                        <div className={styles.iconWrapper}>
+                          <item.icon size={22} color="#CA8DFF" style={{ opacity: isActive ? 1 : 0.7 }} />
+                        </div>
+                        <span 
+                            ref={(el) => { if (el) labelsRef.current[refIndex] = el; }} 
+                            className={styles.linkLabel}
+                        >
+                          {item.label}
+                        </span>
+                        {isActive && <div className={styles.activeGlow} />}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </>
+          )}
+          
           <div className={styles.divider} />
           
           <nav className={styles.nav}>
             {bottomMenuItems.map((item, i) => {
-               const refIndex = mainMenuItems.length + i;
+               const refIndex = mainMenuItems.length + adminMenuItems.length + i;
                const isActive = pathname === item.path;
                return (
                 <Link key={item.path} href={item.path} className={styles.linkWrapper}>
