@@ -1,11 +1,10 @@
 .container {
   background-color: #0f0d11; 
   width: 100%;
-  padding-top: 50px;   /* Distância do topo */
-  padding-right: 80px; /* Distância fixa da direita */
+  padding-top: 50px;
+  padding-right: 80px;
   padding-bottom: 50px;
   
-  /* O padding-left será injetado pelo GSAP no componente (380px ou 130px) */
 
   color: #fff;
   min-height: 100vh;
@@ -18,13 +17,13 @@
 /* --- GRID SUPERIOR --- */
 .headerGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr; /* Proporção da imagem */
+  grid-template-columns: 1fr 1fr 1.5fr;
   gap: 24px;
   margin-bottom: 24px;
 }
 
 .statCard {
-  background-color: #1a1620; /* Fundo escuro */
+  background-color: #1a1620;
   border-radius: 20px;
   padding: 32px;
   display: flex;
