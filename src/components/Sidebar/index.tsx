@@ -26,13 +26,10 @@ const mainMenuItems = [
   { icon: ShoppingBag, label: "Loja", path: "/dashboard/shop" },
 ];
 
-// Itens de menu exclusivos para admin
-const adminMenuItems = [
-    { icon: Settings, label: "Configurações", path: "/dashboard/settings" },
-  { icon: Palette, label: "Criar Certificado", path: "/dashboard/admin/certificates" },
-];
+
 
 const bottomMenuItems = [
+  { icon: Settings, label: "Configurações", path: "/dashboard/settings" }, // Movi para cá ou destaque
   { icon: HelpCircle, label: "Informações", path: "/dashboard/info" },
 ];
 
@@ -181,40 +178,21 @@ export default function Sidebar() {
           {(profile?.role === 'admin' || profile?.role === 'master') && (
             <>
               <div className={styles.divider} />
-              <nav className={styles.nav}>
-                {adminMenuItems.map((item, i) => {
-                  const refIndex = mainMenuItems.length + i;
-                  const isActive = pathname === item.path || pathname?.startsWith(item.path);
-                  return (
-                    <Link key={item.path} href={item.path} className={styles.linkWrapper}>
-                      <div className={`${styles.link} ${isActive ? styles.active : ""}`} title={!isExpanded ? item.label : ""}>
-                        <div className={styles.iconWrapper}>
-                          <item.icon size={22} color="#CA8DFF" style={{ opacity: isActive ? 1 : 0.7 }} />
-                        </div>
-                        <span 
-                            ref={(el) => { if (el) labelsRef.current[refIndex] = el; }} 
-                            className={styles.linkLabel}
-                        >
-                          {item.label}
-                        </span>
-                        {isActive && <div className={styles.activeGlow} />}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </nav>
+              
             </>
           )}
           
-          <div className={styles.divider} />
-          
           <nav className={styles.nav}>
             {bottomMenuItems.map((item, i) => {
-               const refIndex = mainMenuItems.length + adminMenuItems.length + i;
+               // ✅ CORREÇÃO AQUI:
+               // Antes era: mainMenuItems.length + adminMenuItems.length + i;
+               // Como não tem mais adminMenuItems, removemos ele da soma:
+               const refIndex = mainMenuItems.length + i; 
+
                const isActive = pathname === item.path;
                return (
                 <Link key={item.path} href={item.path} className={styles.linkWrapper}>
-                    <div className={`${styles.link} ${isActive ? styles.active : ""}`}>
+                   <div className={`${styles.link} ${isActive ? styles.active : ""}`}>
                     <div className={styles.iconWrapper}>
                         <item.icon size={22} color="#CA8DFF" style={{ opacity: 0.6 }} />
                     </div>
@@ -224,7 +202,7 @@ export default function Sidebar() {
                     >
                         {item.label}
                     </span>
-                    </div>
+                   </div>
                 </Link>
                )
             })}

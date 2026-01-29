@@ -5,10 +5,10 @@
 }
   
 .card {
-    height: 400px;
+    height: 420px;
     background-color: #131116;
     border-radius: 32px;
-    padding: 15px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     position: relative;

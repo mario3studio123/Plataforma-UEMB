@@ -97,17 +97,33 @@
 .heroGradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-      90deg, 
-      #000000 15%,                 /* Cor Sólida na esquerda */
-      rgba(0, 0, 0, 0.8) 40%,   /* Cor semi-transparente no meio */
-      rgba(0, 0, 0, 0.2) 100%   /* Quase transparente na direita */
-    ),
+  z-index: 1;
+  background: 
+    /* 1. VIGNETTE LATERAL (Foco no Texto) */
+    /* Cria uma parede escura na esquerda que desvanece suavemente para a direita */
     linear-gradient(
-      0deg, 
-      #0f0d11 0%,                  /* Cor Sólida embaixo (conecta com o carrossel) */
-      transparent 60%              /* Transparente em cima */
+      90deg, 
+      #0f0d11 0%, 
+      rgba(15, 13, 17, 0.95) 25%, 
+      rgba(15, 13, 17, 0.7) 45%, 
+      rgba(15, 13, 17, 0) 70%
+    ),
+    
+    /* 2. FLOOR FADE (Fusão com o fundo) */
+    /* Em vez de transparente -> cor, usamos paradas manuais para simular uma curva exponencial */
+    linear-gradient(
+      to top, 
+      #0f0d11 0%,        /* Sólido absoluto na base */
+      #0f0d11 15%,       /* Mantém sólido um pouco para garantir a fusão */
+      rgba(15, 13, 17, 0.9) 30%,
+      rgba(15, 13, 17, 0.7) 45%,
+      rgba(15, 13, 17, 0.4) 60%,
+      rgba(15, 13, 17, 0.1) 80%,
+      transparent 100%
     );
+    
+  /* Mistura suave para evitar banding em monitores ruins */
+  pointer-events: none; 
 }
 
 .heroContent {

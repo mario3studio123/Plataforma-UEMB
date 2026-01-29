@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: var(--background); /* Fundo base */
+  background-color: #161417; /* Fundo base */
   color: #ffffff;
   padding: 20px;
   overflow: hidden;
